@@ -1,2 +1,4 @@
 *.history
 *.log
+*.key
+INCA_libs
