@@ -1,7 +1,8 @@
 `timescale 1ps / 1ps
-`include "../models/Config-AC.v"
 
 module sdram_test;
+
+`include "Config-AC.v"
 
 reg                     clk;
 reg                     cke;
@@ -11,14 +12,14 @@ reg                     cs_n;
 reg                     ras_n;
 reg                     cas_n;
 reg                     we_n;
-reg   [DM_BITS - 1 : 0] dqm;
 reg   [DQ_BITS - 1 : 0] dq;
+reg   [DM_BITS - 1 : 0] dqm;
 
 wire  [DQ_BITS - 1 : 0] DQ = dq;
 
 parameter hi_z = {DQ_BITS{1'bz}};
 
-W989DxDB sdram(clk, cke, addr, ba, cs_n, ras_n, cas_n, we_n, dqm, DQ);
+W989DxDB sdram(clk, cke, addr, ba, cs_n, ras_n, cas_n, we_n, DQ, dqm);
 
 initial begin
     clk  = 1'b0;
@@ -27,7 +28,7 @@ initial begin
     dq   = hi_z;
 end
 
-always $(tCK / 2) clk = ~clk;
+always #(tCK / 2) clk = ~clk;
 
 task active;
     input [ADDR_BITS - 1 : 0] bank;
