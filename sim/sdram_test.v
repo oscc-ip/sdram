@@ -20,7 +20,7 @@ wire  [DQ_BITS - 1 : 0] DQ = dq;
 parameter hi_z = {DQ_BITS{1'bz}};
 parameter t100us = 1000000000;
 
-W989DxDB sdram(clk, cke, addr, ba, cs_n, ras_n, cas_n, we_n, DQ, dqm);
+W989DxDB sdram_inst(clk, cke, addr, ba, cs_n, ras_n, cas_n, we_n, DQ, dqm);
 
 initial begin
     clk  = 1;
