@@ -6,12 +6,12 @@ module  sdram_tb_init();
 
 parameter PERIOD = 10;
 
-reg         clk;       // Clock
-reg         rst_n;     // Reset
-wire [ 3:0] init_cmd;  // Command
-wire [ 1:0] init_bank; // Bank address
-wire [12:0] init_addr; // Data address
-wire        init_end;  // End flag
+reg           clk;       // Clock
+reg           rst_n;     // Reset
+wire [ 3 : 0] init_cmd;  // Command
+wire [ 1 : 0] init_bank; // Bank address
+wire [12 : 0] init_addr; // Data address
+wire          init_end;  // End flag
 
 // Initialization
 initial begin
@@ -48,7 +48,7 @@ W989DxDB sdram_inst(
 );
 
 // Store 10 characters(Each character is 8 bits wide)
-reg [79:0] state_curr;
+reg [79 : 0] state_curr;
 
 always @(*) begin
     case (sdram_init_inst.state_curr)
