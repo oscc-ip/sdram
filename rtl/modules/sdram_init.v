@@ -8,17 +8,21 @@ module sdram_init(
     output reg          init_end    // End flag
 );
 
+`include "Config-AC.v"
+
 //-----------------------------------------------------------------------------
 
-localparam	CNT_WAIT = 15'd10000, // Clock count
+localparam	CNT_WAIT = 16'd10000, // Clock count
             CNT_AR   = 4'd8;	  // Auto refresh count
 
-localparam	TRP  = 3'd2, // The time required to wait for the next operation
-                         // after sending the precharge command
-            TRFC = 3'd7, // The time to wait for the next operation after
-                         // sending the automatic refresh command
-            TMRD = 3'd3; // The time to wait for the next operation after
-                         // sending the set mode register command
+localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
+                                           // next operation after sending the
+                                           // precharge command
+            TRFC = (tRFC / 1000 / 10 + 1), // The time to wait for the next
+                                           // operation after sending the auto
+                                           // refresh command
+            TMRD =  tMRD; // The time to wait for the next operation after
+                          // sending the set mode register command
 
 localparam 	CMD_PRE = 4'b0010, // Precharge command
             CMD_AR  = 4'b0001, // Auto refresh command
@@ -59,9 +63,9 @@ assign flag_trfc = ((state_curr == STATE_TRFC) && (cnt_fsm == TRFC - 1'b1)) ?
 assign flag_tmrd = ((state_curr == STATE_TMRD) && (cnt_fsm == TMRD - 1'b1)) ?
                      1'b1 : 1'b0;
 
-always @(posedge init_clk or negedge init_rst_n ) begin
+always @(posedge init_clk or negedge init_rst_n) begin
     if (!init_rst_n) begin
-        cnt_wait <= 15'd0;
+        cnt_wait <= 16'd0;
     end
     else if (cnt_wait == CNT_WAIT) begin
         cnt_wait <= cnt_wait;
