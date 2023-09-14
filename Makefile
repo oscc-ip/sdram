@@ -17,6 +17,11 @@ sim_init:
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/modules/sdram_init.v \
 		../sim/sdram_tb_init.v
+sim_ar:
+	cd models && \
+	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+		../rtl/modules/sdram_ar.v \
+		../sim/sdram_tb_ar.v
 sim_test:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
