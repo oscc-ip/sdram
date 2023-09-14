@@ -4,7 +4,7 @@ module  sdram_tb_init();
 
 `include "Config-AC.v"
 
-parameter PERIOD = 10;
+parameter CYCLE = 10;
 
 reg           clk;       // Clock
 reg           rst_n;     // Reset
@@ -17,13 +17,13 @@ wire          init_end;  // End flag
 initial begin
     clk   = 1'b1;
     rst_n = 1'b0;
-    #(PERIOD * 10)
+    #(CYCLE * 10)
     rst_n = 1'b1;
 end
 
 // Generate 100MHz Clock
 // 10ns = 100MHz
-always #(PERIOD / 2) clk = ~clk;
+always #(CYCLE / 2) clk = ~clk;
 
 sdram_init  sdram_init_inst(
     .init_clk  (clk),
@@ -52,15 +52,15 @@ reg [79 : 0] state_curr;
 
 always @(*) begin
     case (sdram_init_inst.state_curr)
-        3'b000:  state_curr = "INIT_WAIT ";
-        3'b001:  state_curr = "INIT_PRE  ";
-        3'b011:  state_curr = "INIT_TRP  ";
-        3'b010:  state_curr = "INIT_AR   ";
-        3'b110:  state_curr = "INIT_TRFC ";
-        3'b111:  state_curr = "INIT_MRS  ";
-        3'b101:  state_curr = "INIT_TMRD ";
-        3'b100:  state_curr = "INIT_END  ";
-        default: state_curr = "INIT_WAIT ";
+        3'b000:  state_curr = "INIT_WAIT";
+        3'b001:  state_curr = "INIT_PRE ";
+        3'b011:  state_curr = "INIT_TRP ";
+        3'b010:  state_curr = "INIT_AR  ";
+        3'b110:  state_curr = "INIT_TRFC";
+        3'b111:  state_curr = "INIT_MRS ";
+        3'b101:  state_curr = "INIT_TMRD";
+        3'b100:  state_curr = "INIT_END ";
+        default: state_curr = "INIT_WAIT";
     endcase
 end
 

@@ -12,8 +12,10 @@ module sdram_init(
 
 //-----------------------------------------------------------------------------
 
-localparam	CNT_WAIT = 16'd10000, // Clock count
-            CNT_AR   = 4'd8;	  // Auto refresh count
+localparam	CNT_WAIT = 16'd10000, // Wait counter, 100MHz = 10ns/cycle,
+                                  // The number of times required to delay 100us:
+                                  // 100*10^3ns / 10ns = 10000
+            CNT_AR   = 4'd2;	  // Auto refresh counter, refresh 2 times
 
 localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
                                            // next operation after sending the
@@ -36,14 +38,14 @@ localparam	STATE_WAIT = 3'b000, // Delay waiting state
             STATE_TRFC = 3'b110, // Auto refresh waiting state
             STATE_MRS  = 3'b111, // Mode register setting state
             STATE_TMRD = 3'b101, // Mode register setting waiting state
-            STATE_END  = 3'b100; // Initialization completed state
+            STATE_END  = 3'b100; // Initialization end state
 
 reg	[ 2 : 0] state_curr;  // State machine current state
 reg	[ 2 : 0] state_next;  // State machine next state
-reg	[14 : 0] cnt_wait;    // Delay waiting count
-reg	[ 3 : 0] cnt_ar;      // Auto refresh count
-reg	[ 3 : 0] cnt_fsm;     // State machine count
-reg          cnt_fsm_rst; // State machine count reset
+reg	[15 : 0] cnt_wait;    // Delay waiting counter
+reg	[ 3 : 0] cnt_ar;      // Auto refresh counter
+reg	[ 3 : 0] cnt_fsm;     // State machine counter
+reg          cnt_fsm_rst; // State machine reset counter
 
 wire flag_wait; // Power-on waiting time flag
 wire flag_trp;  // Precharge waiting time flag
@@ -102,6 +104,17 @@ always @(posedge init_clk or negedge init_rst_n) begin
     end
 end
 
+always @(*) begin
+    case (state_curr)
+        STATE_WAIT: cnt_fsm_rst = 1'b1;
+        STATE_TRP:  cnt_fsm_rst = (flag_trp)  ? 1'b1 : 1'b0;
+        STATE_TRFC: cnt_fsm_rst = (flag_trfc) ? 1'b1 : 1'b0;
+        STATE_TMRD: cnt_fsm_rst = (flag_tmrd) ? 1'b1 : 1'b0;
+        STATE_END:  cnt_fsm_rst = 1'b1;
+        default:    cnt_fsm_rst = 1'b0;
+    endcase
+end
+
 always @(posedge init_clk or negedge init_rst_n) begin
     if (!init_rst_n) begin
         init_end <= 1'b0;
@@ -112,17 +125,6 @@ always @(posedge init_clk or negedge init_rst_n) begin
     else begin
         init_end <= 1'b0;
     end
-end
-
-always @(*) begin
-    case (state_curr)
-        STATE_WAIT: cnt_fsm_rst = 1'b1;
-        STATE_TRP:  cnt_fsm_rst = (flag_trp)  ? 1'b1 : 1'b0;
-        STATE_TRFC: cnt_fsm_rst = (flag_trfc) ? 1'b1 : 1'b0;
-        STATE_TMRD: cnt_fsm_rst = (flag_tmrd) ? 1'b1 : 1'b0;
-        STATE_END:  cnt_fsm_rst = 1'b1;
-        default:    cnt_fsm_rst = 1'b0;
-    endcase
 end
 
 //-----------------------------------------------------------------------------
