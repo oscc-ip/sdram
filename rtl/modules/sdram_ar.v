@@ -29,13 +29,13 @@ localparam CNT_AR_TIME = 16'd800, // Auto refresh time counter, 100MHz = 10ns/cy
 localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
                                            // next operation after sending the
                                            // precharge command
-            TRFC = (tRFC / 1000 / 10 + 1), // The time to wait for the next
+            TRFC = (tRFC / 1000 / 10 + 1); // The time to wait for the next
                                            // operation after sending the auto
                                            // refresh command
 
 localparam 	CMD_PRE = 4'b0010, // Precharge command
             CMD_AR  = 4'b0001, // Auto refresh command
-            CMD_NOP = 4'b0111, // NO operation command
+            CMD_NOP = 4'b0111; // NO operation command
 
 localparam	STATE_IDLE = 3'b000, // Initial state
             STATE_PRE  = 3'b001, // Precharge state
@@ -163,7 +163,7 @@ end
 
 always @(*) begin
     state_next = STATE_IDLE;
-    case (state_cur)
+    case (state_curr)
         STATE_IDLE: begin
             if (init_end && ar_en) begin
                 state_next = STATE_PRE;
@@ -208,7 +208,7 @@ always @(*) begin
     endcase
 end
 
-always @(posedge ar_clk or ngeedge ar_rst_n) begin
+always @(posedge ar_clk or negedge ar_rst_n) begin
     if (!ar_rst_n) begin
         ar_cmd  <= CMD_NOP;
         ar_bank <= 2'b11;
