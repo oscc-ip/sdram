@@ -1,4 +1,4 @@
-.PHONY: sim_init sim_test clean
+.PHONY: sim_init sim_ar sim_test clean
 
 CMD_GUI ?=
 
