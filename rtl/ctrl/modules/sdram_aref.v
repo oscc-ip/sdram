@@ -1,4 +1,4 @@
-module sdram_ar(
+module sdram_aref(
     input               ar_clk,   // Clock
     input               ar_rst_n, // Reset
     input               ar_en,    // Enable
