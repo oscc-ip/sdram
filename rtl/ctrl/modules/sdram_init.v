@@ -31,7 +31,7 @@ localparam 	CMD_PRE = 4'b0010, // Precharge command
             CMD_NOP = 4'b0111, // NO operation command
             CMD_MRS = 4'b0000; // Mode register setting command
 
-localparam	STATE_WAIT = 3'b000, // Delay waiting state
+localparam	STATE_IDLE = 3'b000, // Initial state
             STATE_PRE  = 3'b001, // Precharge state
             STATE_TRP  = 3'b011, // Precharge waiting state
             STATE_AR   = 3'b010, // Auto refresh state
@@ -81,7 +81,7 @@ always @(posedge init_clk or negedge init_rst_n) begin
     if (!init_rst_n) begin
         cnt_ar <= 4'd0;
     end
-    else if (state_curr == STATE_WAIT) begin
+    else if (state_curr == STATE_IDLE) begin
         cnt_ar <= 4'd0;
     end
     else if (state_curr == STATE_AR) begin
@@ -106,7 +106,7 @@ end
 
 always @(*) begin
     case (state_curr)
-        STATE_WAIT: cnt_fsm_rst = 1'b1;
+        STATE_IDLE: cnt_fsm_rst = 1'b1;
         STATE_TRP:  cnt_fsm_rst = (flag_trp)  ? 1'b1 : 1'b0;
         STATE_TRFC: cnt_fsm_rst = (flag_trfc) ? 1'b1 : 1'b0;
         STATE_TMRD: cnt_fsm_rst = (flag_tmrd) ? 1'b1 : 1'b0;
@@ -132,7 +132,7 @@ end
 // State machine stage 1: Synchronous timing describes state transitions
 always@(posedge init_clk or negedge init_rst_n) begin
     if (!init_rst_n) begin
-        state_curr <= STATE_WAIT;
+        state_curr <= STATE_IDLE;
     end
     else begin
         state_curr <= state_next;
@@ -142,16 +142,16 @@ end
 // State machine stage 2: Combinational logic determines state transition
 // conditions, describes state transition rules and outputs
 always@(*) begin
-    state_next = STATE_WAIT;
+    state_next = STATE_IDLE;
     case (state_curr)
-        STATE_WAIT: begin
+        STATE_IDLE: begin
             // When the wait flag is pulled high, jump to the next state,
             // otherwise stay in this state
             if (flag_wait) begin
                 state_next = STATE_PRE;
             end
             else begin
-                state_next = STATE_WAIT;
+                state_next = STATE_IDLE;
             end
         end
         STATE_PRE: begin
@@ -207,7 +207,7 @@ always@(*) begin
             state_next = STATE_END;
         end
         default: begin
-            state_next = STATE_WAIT;
+            state_next = STATE_IDLE;
         end
     endcase
 end
@@ -225,7 +225,7 @@ always@(posedge init_clk or negedge init_rst_n) begin
         case (state_curr)
             // Output NOP command, don't care about bank address and data
             // address, just pull them all high
-            STATE_WAIT: begin
+            STATE_IDLE: begin
                 init_cmd  <= CMD_NOP;
                 init_bank <= 2'b11;
                 init_addr <= 13'h1fff;

@@ -1,6 +1,6 @@
 `timescale  1ns / 1ns
 
-module  sdram_tb_ar();
+module  sdram_tb_aref();
 
 `include "Config-AC.v"
 

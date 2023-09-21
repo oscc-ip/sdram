@@ -15,13 +15,13 @@ endif
 sim_init:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
-		../rtl/modules/sdram_init.v \
+		../rtl/ctrl/modules/sdram_init.v \
 		../sim/sdram_tb_init.v
-sim_ar:
+sim_aref:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
-		../rtl/modules/sdram_ar.v \
-		../sim/sdram_tb_ar.v
+		../rtl/ctrl/modules/sdram_aref.v \
+		../sim/sdram_tb_aref.v
 sim_test:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
