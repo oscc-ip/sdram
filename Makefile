@@ -22,6 +22,11 @@ sim_aref:
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_aref.v \
 		../sim/sdram_tb_aref.v
+sim_write:
+	cd models && \
+	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+		../rtl/ctrl/modules/sdram_write.v \
+		../sim/sdram_tb_write.v
 sim_test:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \

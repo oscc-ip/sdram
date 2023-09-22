@@ -1,20 +1,20 @@
 module sdram_init(
-    input               init_clk,   // Clock
-    input               init_rst_n, // Reset
+    input               init_clk,   // Init clock
+    input               init_rst_n, // Init reset
 
-    output reg [ 3 : 0] init_cmd,   // 4-bit Command: {CS#, RAS#, CAS#, WE#}
-    output reg [ 1 : 0] init_bank,  // Bank address
-    output reg [12 : 0] init_addr,  // Data address
-    output reg          init_end    // End flag
+    output reg [ 3 : 0] init_cmd,   // Init command: {CS#, RAS#, CAS#, WE#}
+    output reg [ 1 : 0] init_bank,  // Init bank address
+    output reg [12 : 0] init_addr,  // Init data address
+    output reg          init_end    // Init end flag
 );
 
 `include "Config-AC.v"
 
 //-----------------------------------------------------------------------------
 
-localparam	CNT_WAIT = 16'd10000, // Wait counter, 100MHz = 10ns/cycle,
-                                  // The number of times required to delay 100us:
-                                  // 100*10^3ns / 10ns = 10000
+localparam	CNT_WAIT = 16'd20000, // Wait counter, 100MHz = 10ns/cycle,
+                                  // The number of times required to delay 200us
+                                  // (>=100us): 200*10^3ns / 10ns = 20000
             CNT_AR   = 4'd2;	  // Auto refresh counter, refresh 2 times
 
 localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
