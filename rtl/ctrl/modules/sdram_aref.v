@@ -26,23 +26,23 @@ localparam CNT_AR_TIME = 16'd800, // Auto refresh time counter, 100MHz = 10ns/cy
                                   // 8*10^3ns / 10ns = 800
            CNT_AR      = 4'd2;    // Auto refresh counter, refresh 2 times
 
-localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
-                                           // next operation after sending the
-                                           // precharge command
-            TRFC = (tRFC / 1000 / 10 + 1); // The time to wait for the next
-                                           // operation after sending the auto
-                                           // refresh command
+localparam TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
+                                          // next operation after sending the
+                                          // precharge command
+           TRFC = (tRFC / 1000 / 10 + 1); // The time to wait for the next
+                                          // operation after sending the auto
+                                          // refresh command
 
-localparam 	CMD_PRE = 4'b0010, // Precharge command
-            CMD_AR  = 4'b0001, // Auto refresh command
-            CMD_NOP = 4'b0111; // NO operation command
+localparam CMD_PRE = 4'b0010, // Precharge command
+           CMD_AR  = 4'b0001, // Auto refresh command
+           CMD_NOP = 4'b0111; // NO operation command
 
-localparam	STATE_IDLE = 3'b000, // Init state
-            STATE_PRE  = 3'b001, // Precharge state
-            STATE_TRP  = 3'b011, // Precharge waiting state
-            STATE_AR   = 3'b010, // Auto refresh state
-            STATE_TRFC = 3'b110, // Auto refresh waiting state
-            STATE_END  = 3'b111; // Auto refresh end state
+localparam STATE_IDLE = 3'b000, // Init state
+           STATE_PRE  = 3'b001, // Precharge state
+           STATE_TRP  = 3'b011, // Precharge waiting state
+           STATE_AR   = 3'b010, // Auto refresh state
+           STATE_TRFC = 3'b110, // Auto refresh waiting state
+           STATE_END  = 3'b111; // Auto refresh end state
 
 reg [ 2 : 0] state_curr;  // State machine current state
 reg [ 2 : 0] state_next;  // State machine next state

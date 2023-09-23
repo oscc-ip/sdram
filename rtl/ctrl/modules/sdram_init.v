@@ -12,39 +12,39 @@ module sdram_init(
 
 //-----------------------------------------------------------------------------
 
-localparam	CNT_WAIT = 16'd20000, // Wait counter, 100MHz = 10ns/cycle,
-                                  // The number of times required to delay 200us
-                                  // (>=100us): 200*10^3ns / 10ns = 20000
-            CNT_AR   = 4'd2;	  // Auto refresh counter, refresh 2 times
+localparam CNT_WAIT = 16'd20000, // Wait counter, 100MHz = 10ns/cycle,
+                                 // The number of times required to delay 200us
+                                 // (>=100us): 200*10^3ns / 10ns = 20000
+           CNT_AR   = 4'd2;      // Auto refresh counter, refresh 2 times
 
-localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
-                                           // next operation after sending the
-                                           // precharge command
-            TRFC = (tRFC / 1000 / 10 + 1), // The time to wait for the next
-                                           // operation after sending the auto
-                                           // refresh command
-            TMRD =  tMRD; // The time to wait for the next operation after
-                          // sending the set mode register command
+localparam TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
+                                          // next operation after sending the
+                                          // precharge command
+           TRFC = (tRFC / 1000 / 10 + 1), // The time to wait for the next
+                                          // operation after sending the auto
+                                          // refresh command
+           TMRD =  tMRD; // The time to wait for the next operation after
+                         // sending the set mode register command
 
-localparam 	CMD_PRE = 4'b0010, // Precharge command
-            CMD_AR  = 4'b0001, // Auto refresh command
-            CMD_NOP = 4'b0111, // NO operation command
-            CMD_MRS = 4'b0000; // Mode register setting command
+localparam CMD_PRE = 4'b0010, // Precharge command
+           CMD_AR  = 4'b0001, // Auto refresh command
+           CMD_NOP = 4'b0111, // NO operation command
+           CMD_MRS = 4'b0000; // Mode register setting command
 
-localparam	STATE_IDLE = 3'b000, // Init state
-            STATE_PRE  = 3'b001, // Precharge state
-            STATE_TRP  = 3'b011, // Precharge waiting state
-            STATE_AR   = 3'b010, // Auto refresh state
-            STATE_TRFC = 3'b110, // Auto refresh waiting state
-            STATE_MRS  = 3'b111, // Mode register setting state
-            STATE_TMRD = 3'b101, // Mode register setting waiting state
-            STATE_END  = 3'b100; // Init end state
+localparam STATE_IDLE = 3'b000, // Init state
+           STATE_PRE  = 3'b001, // Precharge state
+           STATE_TRP  = 3'b011, // Precharge waiting state
+           STATE_AR   = 3'b010, // Auto refresh state
+           STATE_TRFC = 3'b110, // Auto refresh waiting state
+           STATE_MRS  = 3'b111, // Mode register setting state
+           STATE_TMRD = 3'b101, // Mode register setting waiting state
+           STATE_END  = 3'b100; // Init end state
 
-reg	[ 2 : 0] state_curr;  // State machine current state
-reg	[ 2 : 0] state_next;  // State machine next state
-reg	[15 : 0] cnt_wait;    // Delay waiting counter
-reg	[ 3 : 0] cnt_ar;      // Auto refresh counter
-reg	[ 3 : 0] cnt_fsm;     // State machine counter
+reg [ 2 : 0] state_curr;  // State machine current state
+reg [ 2 : 0] state_next;  // State machine next state
+reg [15 : 0] cnt_wait;    // Delay waiting counter
+reg [ 3 : 0] cnt_ar;      // Auto refresh counter
+reg [ 3 : 0] cnt_fsm;     // State machine counter
 reg          cnt_fsm_rst; // State machine reset counter
 
 wire flag_wait; // Power-on waiting time flag

@@ -21,12 +21,12 @@ module sdram_write(
 
 //-----------------------------------------------------------------------------
 
-localparam	TRP  = (tRP  / 1000 / 10 + 1), // The time required to wait for the
-                                           // next operation after sending the
-                                           // precharge command
-            TRCD = (tRCD / 1000 / 10 + 1); // The time required to wait for the
-                                           // next operation after sending the
-                                           // active command
+localparam TRCD = (tRCD / 1000 / 10 + 1), // The time required to wait for the
+                                          // next operation after sending the
+                                          // active command
+           TRP  = (tRP  / 1000 / 10 + 1); // The time required to wait for the
+                                          // next operation after sending the
+                                          // precharge command
 
 localparam CMD_NOP      = 4'b0111, // NO operation command
            CMD_PRE      = 4'b0010, // Precharge command
