@@ -37,7 +37,7 @@ localparam 	CMD_PRE = 4'b0010, // Precharge command
             CMD_AR  = 4'b0001, // Auto refresh command
             CMD_NOP = 4'b0111; // NO operation command
 
-localparam	STATE_IDLE = 3'b000, // Initial state
+localparam	STATE_IDLE = 3'b000, // Init state
             STATE_PRE  = 3'b001, // Precharge state
             STATE_TRP  = 3'b011, // Precharge waiting state
             STATE_AR   = 3'b010, // Auto refresh state
@@ -49,7 +49,7 @@ reg [ 2 : 0] state_next;  // State machine next state
 reg [15 : 0] cnt_ar_time; // Auto refresh time counter
 reg [ 1 : 0] cnt_ar;      // Auto refresh counter
 reg [ 3 : 0] cnt_fsm;     // State machine counter
-reg [ 3 : 0] cnt_fsm_rst; // State machine reset counter
+reg          cnt_fsm_rst; // State machine reset counter
 
 wire flag_trp;    // Precharge waiting time flag
 wire flag_trfc;   // Auto refresh waiting time flag
@@ -152,6 +152,7 @@ end
 
 //-----------------------------------------------------------------------------
 
+// State machine stage 1: Synchronous timing describes state transitions
 always @(posedge ar_clk or negedge ar_rst_n) begin
     if (!ar_rst_n) begin
         state_curr <= STATE_IDLE;
@@ -161,6 +162,8 @@ always @(posedge ar_clk or negedge ar_rst_n) begin
     end
 end
 
+// State machine stage 2: Combinational logic determines state transition
+// conditions, describes state transition rules and outputs
 always @(*) begin
     state_next = STATE_IDLE;
     case (state_curr)
@@ -208,6 +211,7 @@ always @(*) begin
     endcase
 end
 
+// State machine stage 3: Sequential logic description output
 always @(posedge ar_clk or negedge ar_rst_n) begin
     if (!ar_rst_n) begin
         ar_cmd  <= CMD_NOP;

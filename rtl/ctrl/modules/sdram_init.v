@@ -31,14 +31,14 @@ localparam 	CMD_PRE = 4'b0010, // Precharge command
             CMD_NOP = 4'b0111, // NO operation command
             CMD_MRS = 4'b0000; // Mode register setting command
 
-localparam	STATE_IDLE = 3'b000, // Initial state
+localparam	STATE_IDLE = 3'b000, // Init state
             STATE_PRE  = 3'b001, // Precharge state
             STATE_TRP  = 3'b011, // Precharge waiting state
             STATE_AR   = 3'b010, // Auto refresh state
             STATE_TRFC = 3'b110, // Auto refresh waiting state
             STATE_MRS  = 3'b111, // Mode register setting state
             STATE_TMRD = 3'b101, // Mode register setting waiting state
-            STATE_END  = 3'b100; // Initialization end state
+            STATE_END  = 3'b100; // Init end state
 
 reg	[ 2 : 0] state_curr;  // State machine current state
 reg	[ 2 : 0] state_next;  // State machine next state
