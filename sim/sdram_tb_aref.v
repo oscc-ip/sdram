@@ -60,6 +60,7 @@ assign sdram_addr = (init_end == 1'b1) ? ar_addr : init_addr;
 sdram_init sdram_init_inst(
     .init_clk  (clk),
     .init_rst_n(rst_n),
+
     .init_cmd  (init_cmd),
     .init_bank (init_bank),
     .init_addr (init_addr),
@@ -71,6 +72,7 @@ sdram_ar sdram_ar_inst(
     .ar_rst_n(rst_n),
     .ar_en   (ar_en),
     .init_end(init_end),
+
     .ar_cmd  (ar_cmd),
     .ar_bank (ar_bank),
     .ar_addr (ar_addr),
@@ -96,13 +98,13 @@ reg [79 : 0] state_curr;
 
 always @(*) begin
     case (sdram_ar_inst.state_curr)
-        3'b000:  state_curr = "AR_IDLE";
-        3'b001:  state_curr = "AR_PRE ";
-        3'b011:  state_curr = "AR_TRP ";
-        3'b010:  state_curr = "AR_AR  ";
-        3'b110:  state_curr = "AR_TRFC";
-        3'b111:  state_curr = "AR_END ";
-        default: state_curr = "AR_IDLE";
+        3'b000:  state_curr = "STATE_IDLE";
+        3'b001:  state_curr = "STATE_PRE ";
+        3'b011:  state_curr = "STATE_TRP ";
+        3'b010:  state_curr = "STATE_AR  ";
+        3'b110:  state_curr = "STATE_TRFC";
+        3'b111:  state_curr = "STATE_END ";
+        default: state_curr = "STATE_IDLE";
     endcase
 end
 

@@ -28,6 +28,7 @@ always #(CYCLE / 2) clk = ~clk;
 sdram_init  sdram_init_inst(
     .init_clk  (clk),
     .init_rst_n(rst_n),
+
     .init_cmd  (init_cmd),
     .init_bank (init_bank),
     .init_addr (init_addr),
@@ -52,15 +53,15 @@ reg [79 : 0] state_curr;
 
 always @(*) begin
     case (sdram_init_inst.state_curr)
-        3'b000:  state_curr = "INIT_WAIT";
-        3'b001:  state_curr = "INIT_PRE ";
-        3'b011:  state_curr = "INIT_TRP ";
-        3'b010:  state_curr = "INIT_AR  ";
-        3'b110:  state_curr = "INIT_TRFC";
-        3'b111:  state_curr = "INIT_MRS ";
-        3'b101:  state_curr = "INIT_TMRD";
-        3'b100:  state_curr = "INIT_END ";
-        default: state_curr = "INIT_WAIT";
+        3'b000:  state_curr = "STATE_IDLE";
+        3'b001:  state_curr = "STATE_PRE ";
+        3'b011:  state_curr = "STATE_TRP ";
+        3'b010:  state_curr = "STATE_AR  ";
+        3'b110:  state_curr = "STATE_TRFC";
+        3'b111:  state_curr = "STATE_MRS ";
+        3'b101:  state_curr = "STATE_TMRD";
+        3'b100:  state_curr = "STATE_END ";
+        default: state_curr = "STATE_IDLE";
     endcase
 end
 
