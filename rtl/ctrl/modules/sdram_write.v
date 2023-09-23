@@ -86,7 +86,7 @@ always @(*) begin
 end
 
 assign wr_ack = (state_curr == STATE_WR) ||
-               ((state_curr == STATE_DATA) && (cnt_fsm <= wr_burst_len - 2'd2));
+               ((state_curr == STATE_DATA) && (cnt_fsm <= wr_bst_len - 2'd2));
 assign wr_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
 assign wr_sdram_data = (wr_sdram_en == 1'b1) ? wr_data : 16'b0;
 
