@@ -54,40 +54,12 @@ wire flag_trp_end;  // Precharge waiting time flag
 
 //-----------------------------------------------------------------------------
 
-
-
-
-
-
-assign	wr_ack = (state_curr == STATE_WR) ||
-                ((state_curr == STATE_DATA) && (cnt_fsm <= wr_burst_len - 2'd2));
-assign	wr_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
-
-
-
-
-
-assign wr_sdram_data = (wr_sdram_en == 1'b1) ? wr_data : 16'b0;
-
-
-
-
-
-always @(posedge wr_clk or negedge wr_rst_n) begin
-    if (!wr_rst_n) begin
-        wr_sdram_en <= 1'b0;
-    end
-    else begin
-        wr_sdram_en <= wr_ack;
-    end
-end
-
-assign flag_trp_end  = ((state_curr == WR_TRP)  &&
-                        (cnt_fsm == TRP - 1'b1)) ? 1'b1 : 1'b0;
-assign flag_wr_end   = ((state_curr == WR_DATA) &&
-                        (cnt_fsm == wr_bst_len - 1'b1)) ? 1'b1 : 1'b0;
 assign flag_trcd_end = ((state_curr == WR_TRCD) &&
                         (cnt_fsm == TRCD - 1'b1)) ? 1'b1 : 1'b0;
+assign flag_wr_end   = ((state_curr == WR_DATA) &&
+                        (cnt_fsm == wr_bst_len - 1'b1)) ? 1'b1 : 1'b0;
+assign flag_trp_end  = ((state_curr == WR_TRP)  &&
+                        (cnt_fsm == TRP - 1'b1)) ? 1'b1 : 1'b0;
 
 always @(posedge wr_clk or negedge wr_rst_n) begin
     if (!wr_rst_n) begin
@@ -113,12 +85,21 @@ always @(*) begin
     endcase
 end
 
+assign wr_ack = (state_curr == STATE_WR) ||
+               ((state_curr == STATE_DATA) && (cnt_fsm <= wr_burst_len - 2'd2));
+assign wr_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
+assign wr_sdram_data = (wr_sdram_en == 1'b1) ? wr_data : 16'b0;
 
-
-
+always @(posedge wr_clk or negedge wr_rst_n) begin
+    if (!wr_rst_n) begin
+        wr_sdram_en <= 1'b0;
+    end
+    else begin
+        wr_sdram_en <= wr_ack;
+    end
+end
 
 //-----------------------------------------------------------------------------
-
 
 // State machine stage 1: Synchronous timing describes state transitions
 always @(posedge wr_clk or negedge wr_rst_n) begin
