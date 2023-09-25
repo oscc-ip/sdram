@@ -1,4 +1,4 @@
-.PHONY: sim_init sim_ar sim_test clean
+.PHONY: sim_init sim_aref sim_write sim_read sim_test clean
 
 CMD_GUI ?=
 
@@ -27,6 +27,11 @@ sim_write:
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_write.v \
 		../sim/sdram_tb_write.v
+sim_read:
+	cd models && \
+	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+		../rtl/ctrl/modules/sdram_read.v \
+		../sim/sdram_tb_read.v
 sim_test:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
