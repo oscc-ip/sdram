@@ -1,4 +1,4 @@
-`timescale  1ns / 1ns
+`timescale 1ns / 1ns
 
 module sdram_tb_write();
 
@@ -43,10 +43,10 @@ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         wr_en <= 1'b0;
     end
-    else if (wr_end == 1'b1) begin
+    else if (wr_end) begin
         wr_en <= 1'b0;
     end
-    else if (init_end == 1'b1) begin
+    else if (init_end) begin
         wr_en <= 1'b1;
     end
     else begin
@@ -61,7 +61,7 @@ always @(posedge clk or negedge rst_n) begin
     else if (wr_data == 16'd10) begin
         wr_data <= 16'd0;
     end
-    else if (wr_ack == 1'b1) begin
+    else if (wr_ack) begin
         wr_data <= wr_data + 1'b1;
     end
     else begin
@@ -69,9 +69,9 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign sdram_cmd  = (init_end == 1'b1) ? wr_sdram_cmd  : init_cmd;
-assign sdram_bank = (init_end == 1'b1) ? wr_sdram_bank : init_bank;
-assign sdram_addr = (init_end == 1'b1) ? wr_sdram_addr : init_addr;
+assign sdram_cmd  = (init_end) ? wr_sdram_cmd  : init_cmd;
+assign sdram_bank = (init_end) ? wr_sdram_bank : init_bank;
+assign sdram_addr = (init_end) ? wr_sdram_addr : init_addr;
 
 assign sdram_dq = (wr_sdram_en) ? wr_sdram_data : 16'hz;
 
@@ -119,15 +119,16 @@ W989DxDB sdram_inst(
 reg [79 : 0] state_curr;
 
 always @(*) begin
-    case (sdram_write_inst.state_curr)
-        3'b000:  state_curr = "STATE_IDLE";
-        3'b001:  state_curr = "STATE_ACT ";
-        3'b011:  state_curr = "STATE_TRCD";
-        3'b010:  state_curr = "STATE_WR  ";
-        3'b100:  state_curr = "STATE_DATA";
-        3'b101:  state_curr = "STATE_PRE ";
-        3'b111:  state_curr = "STATE_TRP ";
-        3'b110:  state_curr = "STATE_END ";
+    case (sdram_read_inst.state_curr)
+        4'b0000: state_curr = "STATE_IDLE";
+        4'b0001: state_curr = "STATE_ACT ";
+        4'b0011: state_curr = "STATE_TRCD";
+        4'b0010: state_curr = "STATE_RD  ";
+        4'b0100: state_curr = "STATE_TCL ";
+        4'b0101: state_curr = "STATE_DATA";
+        4'b0111: state_curr = "STATE_PRE ";
+        4'b0110: state_curr = "STATE_TRP ";
+        4'b1100: state_curr = "STATE_END ";
         default: state_curr = "STATE_IDLE";
     endcase
 end
