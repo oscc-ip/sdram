@@ -1,1 +1,1 @@
-# SDRAM
+# SDR SDRAM
