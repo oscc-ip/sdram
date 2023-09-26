@@ -9,11 +9,11 @@ module sdram_write(
 
     output              wr_ack,        // Write response
     output              wr_end,        // Write end flag
+    output reg          wr_sdram_en,   // Write sdram enable, used for
+                                       // subsequent arbitration module output
     output reg [ 3 : 0] wr_sdram_cmd,  // Write command: {CS#, RAS#, CAS#, WE#}
     output reg [ 1 : 0] wr_sdram_bank, // Write bank address
     output reg [12 : 0] wr_sdram_addr, // Write data address
-    output reg          wr_sdram_en,   // Write sdram enable, used for
-                                       // subsequent arbitration module output
     output reg [15 : 0] wr_sdram_data  // Write sdram data
 );
 
@@ -88,7 +88,6 @@ end
 assign wr_ack = (state_curr == STATE_WR) ||
                ((state_curr == STATE_DATA) && (cnt_fsm <= wr_bst_len - 2'd2));
 assign wr_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
-assign wr_sdram_data = (wr_sdram_en == 1'b1) ? wr_data : 16'b0;
 
 always @(posedge wr_clk or negedge wr_rst_n) begin
     if (!wr_rst_n) begin
@@ -98,6 +97,8 @@ always @(posedge wr_clk or negedge wr_rst_n) begin
         wr_sdram_en <= wr_ack;
     end
 end
+
+assign wr_sdram_data = (wr_sdram_en == 1'b1) ? wr_data : 16'b0;
 
 //-----------------------------------------------------------------------------
 

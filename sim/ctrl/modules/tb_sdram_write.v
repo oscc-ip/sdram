@@ -1,6 +1,6 @@
 `timescale 1ns / 1ns
 
-module sdram_tb_write();
+module tb_sdram_write();
 
 `include "Config-AC.v"
 
@@ -14,20 +14,19 @@ wire [ 1 : 0] sdram_bank;
 wire [12 : 0] sdram_addr;
 wire [15 : 0] sdram_dq;
 
+wire          init_end;
 wire [ 3 : 0] init_cmd;
 wire [ 1 : 0] init_bank;
 wire [12 : 0] init_addr;
-wire          init_end;
 
 wire          wr_en;
 wire [15 : 0] wr_data;
-
 wire          wr_ack;
 wire          wr_end;
+wire          wr_sdram_en;
 wire [ 3 : 0] wr_sdram_cmd;
 wire [ 1 : 0] wr_sdram_bank;
 wire [12 : 0] wr_sdram_addr;
-wire          wr_sdram_en;
 wire [15 : 0] wr_sdram_data;
 
 initial begin
@@ -69,20 +68,19 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign sdram_cmd  = (init_end) ? wr_sdram_cmd  : init_cmd;
-assign sdram_bank = (init_end) ? wr_sdram_bank : init_bank;
-assign sdram_addr = (init_end) ? wr_sdram_addr : init_addr;
-
-assign sdram_dq = (wr_sdram_en) ? wr_sdram_data : 16'hz;
+assign sdram_cmd  = (init_end)    ? wr_sdram_cmd  : init_cmd;
+assign sdram_bank = (init_end)    ? wr_sdram_bank : init_bank;
+assign sdram_addr = (init_end)    ? wr_sdram_addr : init_addr;
+assign sdram_dq   = (wr_sdram_en) ? wr_sdram_data : 16'hz;
 
 sdram_init sdram_init_inst(
     .init_clk  (clk),
     .init_rst_n(rst_n),
 
+    .init_end  (init_end),
     .init_cmd  (init_cmd),
     .init_bank (init_bank),
-    .init_addr (init_addr),
-    .init_end  (init_end)
+    .init_addr (init_addr)
 );
 
 sdram_write sdram_write_inst(
@@ -96,10 +94,10 @@ sdram_write sdram_write_inst(
 
     .wr_ack       (wr_ack),
     .wr_end       (wr_end),
+    .wr_sdram_en  (wr_sdram_en),
     .wr_sdram_cmd (wr_sdram_cmd),
     .wr_sdram_bank(wr_sdram_bank),
     .wr_sdram_addr(wr_sdram_addr),
-    .wr_sdram_en  (wr_sdram_en),
     .wr_sdram_data(wr_sdram_data)
 );
 
@@ -119,7 +117,7 @@ W989DxDB sdram_inst(
 reg [79 : 0] state_curr;
 
 always @(*) begin
-    case (sdram_read_inst.state_curr)
+    case (sdram_write_inst.state_curr)
         4'b0000: state_curr = "STATE_IDLE";
         4'b0001: state_curr = "STATE_ACT ";
         4'b0011: state_curr = "STATE_TRCD";

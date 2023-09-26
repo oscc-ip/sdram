@@ -1,6 +1,6 @@
 `timescale 1ns / 1ns
 
-module sdram_tb_read();
+module tb_sdram_read();
 
 `include "Config-AC.v"
 
@@ -14,24 +14,22 @@ wire [ 1 : 0] sdram_bank;
 wire [12 : 0] sdram_addr;
 wire [15 : 0] sdram_dq;
 
+wire          init_end;
 wire [ 3 : 0] init_cmd;
 wire [ 1 : 0] init_bank;
 wire [12 : 0] init_addr;
-wire          init_end;
 
 wire          wr_en;
 wire [15 : 0] wr_data;
-
 wire          wr_ack;
 wire          wr_end;
+wire          wr_sdram_en;
 wire [ 3 : 0] wr_sdram_cmd;
 wire [ 1 : 0] wr_sdram_bank;
 wire [12 : 0] wr_sdram_addr;
-wire          wr_sdram_en;
 wire [15 : 0] wr_sdram_data;
 
 wire          rd_en;
-
 wire          rd_end;
 wire [ 3 : 0] rd_sdram_cmd;
 wire [ 1 : 0] rd_sdram_bank;
@@ -107,10 +105,10 @@ sdram_init sdram_init_inst(
     .init_clk  (clk),
     .init_rst_n(rst_n),
 
+    .init_end  (init_end),
     .init_cmd  (init_cmd),
     .init_bank (init_bank),
-    .init_addr (init_addr),
-    .init_end  (init_end)
+    .init_addr (init_addr)
 );
 
 sdram_write sdram_write_inst(
@@ -124,25 +122,25 @@ sdram_write sdram_write_inst(
 
     .wr_ack       (wr_ack),
     .wr_end       (wr_end),
+    .wr_sdram_en  (wr_sdram_en),
     .wr_sdram_cmd (wr_sdram_cmd),
     .wr_sdram_bank(wr_sdram_bank),
     .wr_sdram_addr(wr_sdram_addr),
-    .wr_sdram_en  (wr_sdram_en),
     .wr_sdram_data(wr_sdram_data)
 );
 
 sdram_read sdram_read_inst(
-    .rd_clk(clk),
-    .rd_rst_n(rst_n),
-    .rd_en(rd_en),
-    .rd_addr(24'h000000),
-    .rd_data(sdram_dq),
-    .rd_bst_len(10'd10),
-    .init_end(init_end),
+    .rd_clk       (clk),
+    .rd_rst_n     (rst_n),
+    .rd_en        (rd_en),
+    .rd_addr      (24'h000000),
+    .rd_data      (sdram_dq),
+    .rd_bst_len   (10'd10),
+    .init_end     (init_end),
 
-    .rd_ack(),
-    .rd_end(rd_end),
-    .rd_sdram_cmd(rd_sdram_cmd),
+    .rd_ack       (),
+    .rd_end       (rd_end),
+    .rd_sdram_cmd (rd_sdram_cmd),
     .rd_sdram_bank(rd_sdram_bank),
     .rd_sdram_addr(rd_sdram_addr),
     .rd_sdram_data(rd_sdram_data)
@@ -164,7 +162,7 @@ W989DxDB sdram_inst(
 reg [79 : 0] state_curr;
 
 always @(*) begin
-    case (sdram_write_inst.state_curr)
+    case (sdram_read_inst.state_curr)
         3'b000:  state_curr = "STATE_IDLE";
         3'b001:  state_curr = "STATE_ACT ";
         3'b011:  state_curr = "STATE_TRCD";

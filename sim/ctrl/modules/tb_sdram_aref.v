@@ -1,6 +1,6 @@
 `timescale 1ns / 1ns
 
-module  sdram_tb_aref();
+module tb_sdram_aref();
 
 `include "Config-AC.v"
 
@@ -13,18 +13,17 @@ wire [ 3 : 0] sdram_cmd;  // Command
 wire [ 1 : 0] sdram_bank; // Bank address
 wire [12 : 0] sdram_addr; // Data address
 
+wire          init_end;   // End flag
 wire [ 3 : 0] init_cmd;   // Command
 wire [ 1 : 0] init_bank;  // Bank address
 wire [12 : 0] init_addr;  // Data address
-wire          init_end;   // End flag
 
+reg           ar_en;      // Enable
+wire          ar_req;     // Request
+wire          ar_end;     // End flag
 wire [ 3 : 0] ar_cmd;     // Command
 wire [ 1 : 0] ar_bank;    // Bank address
 wire [12 : 0] ar_addr;    // Data address
-wire          ar_req;     // Request
-wire          ar_end;     // End flag
-
-reg           ar_en;    // Enable
 
 // Initialization
 initial begin
@@ -61,10 +60,10 @@ sdram_init sdram_init_inst(
     .init_clk  (clk),
     .init_rst_n(rst_n),
 
+    .init_end  (init_end),
     .init_cmd  (init_cmd),
     .init_bank (init_bank),
-    .init_addr (init_addr),
-    .init_end  (init_end)
+    .init_addr (init_addr)
 );
 
 sdram_ar sdram_ar_inst(
@@ -73,11 +72,11 @@ sdram_ar sdram_ar_inst(
     .ar_en   (ar_en),
     .init_end(init_end),
 
+    .ar_req  (ar_req),
+    .ar_end  (ar_end),
     .ar_cmd  (ar_cmd),
     .ar_bank (ar_bank),
-    .ar_addr (ar_addr),
-    .ar_req  (ar_req),
-    .ar_end  (ar_end)
+    .ar_addr (ar_addr)
 );
 
 W989DxDB sdram_inst(

@@ -1,6 +1,6 @@
 `timescale 1ns / 1ns
 
-module  sdram_tb_init();
+module tb_sdram_init();
 
 `include "Config-AC.v"
 
@@ -8,10 +8,11 @@ parameter CYCLE = 10;
 
 reg           clk;       // Clock
 reg           rst_n;     // Reset
+
+wire          init_end;  // End flag
 wire [ 3 : 0] init_cmd;  // Command
 wire [ 1 : 0] init_bank; // Bank address
 wire [12 : 0] init_addr; // Data address
-wire          init_end;  // End flag
 
 // Initialization
 initial begin
@@ -29,10 +30,10 @@ sdram_init  sdram_init_inst(
     .init_clk  (clk),
     .init_rst_n(rst_n),
 
+    .init_end  (init_end),
     .init_cmd  (init_cmd),
     .init_bank (init_bank),
-    .init_addr (init_addr),
-    .init_end  (init_end)
+    .init_addr (init_addr)
 );
 
 W989DxDB sdram_inst(

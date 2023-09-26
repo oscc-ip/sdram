@@ -1,24 +1,24 @@
 `timescale 1ps / 1ps
 
-module sdram_test;
+module tb_sdram_model;
 
 `include "Config-AC.v"
 
-reg                     clk;
-reg                     cke;
-reg                     cs_n;
-reg                     ras_n;
-reg                     cas_n;
-reg                     we_n;
-reg   [BA_BITS - 1 : 0] ba;
-reg [ADDR_BITS - 1 : 0] addr;
-reg   [DM_BITS - 1 : 0] dqm;
-reg   [DQ_BITS - 1 : 0] dq;
+reg                      clk;
+reg                      cke;
+reg                      cs_n;
+reg                      ras_n;
+reg                      cas_n;
+reg                      we_n;
+reg  [BA_BITS   - 1 : 0] ba;
+reg  [ADDR_BITS - 1 : 0] addr;
+reg  [DM_BITS   - 1 : 0] dqm;
+reg  [DQ_BITS   - 1 : 0] dq;
 
-wire  [DQ_BITS - 1 : 0] DQ = dq;
+wire [DQ_BITS   - 1 : 0] DQ = dq;
 
-parameter hi_z = {DQ_BITS{1'bz}};
-parameter t100us = 1000000000;
+parameter hi_z = { DQ_BITS{1'bz} };
+parameter t200us = 2000000000;
 
 W989DxDB sdram_inst(
     .clk  (clk),
@@ -219,7 +219,7 @@ endtask
 initial begin
     begin
         // Initialize
-        #t100us;
+        #t200us;
         #tCK; CMD_NOP          (0, hi_z); // NOP
         #tCK; CMD_PRECHARGE_ALL(0, hi_z); // Precharge ALL Bank
         #tCK; CMD_NOP          (0, hi_z); // NOP

@@ -16,26 +16,31 @@ sim_init:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_init.v \
-		../sim/sdram_tb_init.v
+		../sim/tb_sdram_init.v
 sim_aref:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_aref.v \
-		../sim/sdram_tb_aref.v
+		../sim/tb_sdram_aref.v
 sim_write:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_write.v \
-		../sim/sdram_tb_write.v
+		../sim/tb_sdram_write.v
 sim_read:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_read.v \
-		../sim/sdram_tb_read.v
-sim_test:
+		../sim/tb_sdram_read.v
+sim_ctrl:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
-		../sim/sdram_test.v
+		../rtl/ctrl/sdram_ctrl.v \
+		../sim/ctrl/tb_sdram_ctrl.v
+sim_model:
+	cd models && \
+	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+		../sim/tb_sdram_model.v
 clean:
 	find -name "*.log" -o -name "*.history" -o -name "*.key" | xargs rm -f
 	find -name ".simvision" | xargs rm -rf
