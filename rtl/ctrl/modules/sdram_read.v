@@ -1,18 +1,18 @@
 module sdram_read(
-    input   wire          rd_clk,
-    input   wire          rd_rst_n,
-    input   wire          rd_en,
-    input   wire [23 : 0] rd_addr,
-    input   wire [15 : 0] rd_data,
-    input   wire [ 9 : 0] rd_bst_len,
-    input   wire          init_end,
+    input  wire          rd_clk,
+    input  wire          rd_rst_n,
+    input  wire          rd_en,
+    input  wire [23 : 0] rd_addr,
+    input  wire [15 : 0] rd_data,
+    input  wire [ 9 : 0] rd_bst_len,
+    input  wire          init_end,
 
-    output  wire          rd_ack,
-    output  wire          rd_end,
-    output  reg  [ 3 : 0] rd_sdram_cmd,
-    output  reg  [ 1 : 0] rd_sdram_bank,
-    output  reg  [12 : 0] rd_sdram_addr,
-    output  wire [15 : 0] rd_sdram_data
+    output wire          rd_ack,
+    output wire          rd_end,
+    output reg  [ 3 : 0] rd_sdram_cmd,
+    output reg  [ 1 : 0] rd_sdram_bank,
+    output reg  [12 : 0] rd_sdram_addr,
+    output wire [15 : 0] rd_sdram_data
 );
 
 `include "Config-AC.v"
