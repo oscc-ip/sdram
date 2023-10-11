@@ -1,6 +1,7 @@
 *.history
 *.log
 *.key
+*.diag
 .simvision/
 INCA_libs/
 waves.shm/
