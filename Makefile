@@ -16,17 +16,17 @@ sim_init:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_init.v \
-		../sim/tb_sdram_init.v
+		../sim/ctrl/modules/tb_sdram_init.v
 sim_aref:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_aref.v \
-		../sim/tb_sdram_aref.v
+		../sim/ctrl/modules/tb_sdram_aref.v
 sim_write:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		../rtl/ctrl/modules/sdram_write.v \
-		../sim/tb_sdram_write.v
+		../sim/ctrl/modules/tb_sdram_write.v
 sim_read:
 	cd models && \
 	ncverilog $(CMD_GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
