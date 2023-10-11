@@ -2,10 +2,10 @@ module sdram_init(
     input               init_clk,   // Init clock
     input               init_rst_n, // Init reset
 
-    output reg          init_end    // Init end flag
+    output reg          init_end,   // Init end flag
     output reg [ 3 : 0] init_cmd,   // Init command: {CS#, RAS#, CAS#, WE#}
     output reg [ 1 : 0] init_bank,  // Init bank address
-    output reg [12 : 0] init_addr,  // Init data address
+    output reg [12 : 0] init_addr   // Init data address
 );
 
 `include "Config-AC.v"

@@ -66,7 +66,7 @@ sdram_init sdram_init_inst(
     .init_addr (init_addr)
 );
 
-sdram_ar sdram_ar_inst(
+sdram_aref sdram_aref_inst(
     .ar_clk  (clk),
     .ar_rst_n(rst_n),
     .ar_en   (ar_en),
@@ -96,7 +96,7 @@ W989DxDB sdram_inst(
 reg [79 : 0] state_curr;
 
 always @(*) begin
-    case (sdram_ar_inst.state_curr)
+    case (sdram_aref_inst.state_curr)
         3'b000:  state_curr = "STATE_IDLE";
         3'b001:  state_curr = "STATE_PRE ";
         3'b011:  state_curr = "STATE_TRP ";
