@@ -19,8 +19,8 @@ wire [ 3 : 0] init_cmd;
 wire [ 1 : 0] init_bank;
 wire [12 : 0] init_addr;
 
-wire          wr_en;
-wire [15 : 0] wr_data;
+reg           wr_en;
+reg  [15 : 0] wr_data;
 wire          wr_ack;
 wire          wr_end;
 wire          wr_sdram_en;

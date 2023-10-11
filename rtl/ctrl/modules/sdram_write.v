@@ -1,20 +1,20 @@
 module sdram_write(
-    input               wr_clk,       // Write clock
-    input               wr_rst_n,     // Write reset
-    input               wr_en,        // Write enable
-    input      [23 : 0] wr_addr,      // Write addr
-    input      [15 : 0] wr_data,      // Write data
-    input      [ 9 : 0] wr_bst_len,   // Write burst length
-    input               init_end,     // Init end flag
+    input  wire          wr_clk,        // Write clock
+    input  wire          wr_rst_n,      // Write reset
+    input  wire          wr_en,         // Write enable
+    input  wire [23 : 0] wr_addr,       // Write addr
+    input  wire [15 : 0] wr_data,       // Write data
+    input  wire [ 9 : 0] wr_bst_len,    // Write burst length
+    input  wire          init_end,      // Init end flag
 
-    output              wr_ack,        // Write response
-    output              wr_end,        // Write end flag
-    output reg          wr_sdram_en,   // Write sdram enable, used for
-                                       // subsequent arbitration module output
-    output reg [ 3 : 0] wr_sdram_cmd,  // Write command: {CS#, RAS#, CAS#, WE#}
-    output reg [ 1 : 0] wr_sdram_bank, // Write bank address
-    output reg [12 : 0] wr_sdram_addr, // Write data address
-    output reg [15 : 0] wr_sdram_data  // Write sdram data
+    output wire          wr_ack,        // Write response
+    output wire          wr_end,        // Write end flag
+    output reg           wr_sdram_en,   // Write sdram enable, used for
+                                        // subsequent arbitration module output
+    output reg  [ 3 : 0] wr_sdram_cmd,  // Write command: {CS#, RAS#, CAS#, WE#}
+    output reg  [ 1 : 0] wr_sdram_bank, // Write bank address
+    output reg  [12 : 0] wr_sdram_addr, // Write data address
+    output wire [15 : 0] wr_sdram_data  // Write sdram data
 );
 
 `include "Config-AC.v"
@@ -54,18 +54,18 @@ wire flag_trp_end;  // Precharge waiting time flag
 
 //-----------------------------------------------------------------------------
 
-assign flag_trcd_end = ((state_curr == WR_TRCD) &&
+assign flag_trcd_end = ((state_curr == STATE_TRCD) &&
                         (cnt_fsm == TRCD - 1'b1)) ? 1'b1 : 1'b0;
-assign flag_wr_end   = ((state_curr == WR_DATA) &&
+assign flag_wr_end   = ((state_curr == STATE_DATA) &&
                         (cnt_fsm == wr_bst_len - 1'b1)) ? 1'b1 : 1'b0;
-assign flag_trp_end  = ((state_curr == WR_TRP)  &&
+assign flag_trp_end  = ((state_curr == STATE_TRP)  &&
                         (cnt_fsm == TRP - 1'b1)) ? 1'b1 : 1'b0;
 
 always @(posedge wr_clk or negedge wr_rst_n) begin
     if (!wr_rst_n) begin
         cnt_fsm <= 10'd0;
     end
-    else if (cnt_fsm_reset) begin
+    else if (cnt_fsm_rst) begin
         cnt_fsm <= 10'd0;
     end
     else begin
@@ -75,13 +75,13 @@ end
 
 always @(*) begin
     case (state_curr)
-        STATE_IDLE: cnt_fsm_reset = 1'b1;
-        STATE_TRCD: cnt_fsm_reset = (flag_trcd_end) ? 1'b1 : 1'b0;
-        STATE_WR:   cnt_fsm_reset = 1'b1;
-        STATE_DATA: cnt_fsm_reset = (flag_wr_end)   ? 1'b1 : 1'b0;
-        STATE_TRP:  cnt_fsm_reset = (flag_trp_end)  ? 1'b1 : 1'b0;
-        STATE_END:  cnt_fsm_reset = 1'b1;
-        default:    cnt_fsm_reset = 1'b0;
+        STATE_IDLE: cnt_fsm_rst = 1'b1;
+        STATE_TRCD: cnt_fsm_rst = (flag_trcd_end) ? 1'b1 : 1'b0;
+        STATE_WR:   cnt_fsm_rst = 1'b1;
+        STATE_DATA: cnt_fsm_rst = (flag_wr_end)   ? 1'b1 : 1'b0;
+        STATE_TRP:  cnt_fsm_rst = (flag_trp_end)  ? 1'b1 : 1'b0;
+        STATE_END:  cnt_fsm_rst = 1'b1;
+        default:    cnt_fsm_rst = 1'b0;
     endcase
 end
 
