@@ -1,18 +1,18 @@
 module sdram_aref(
-    input               ar_clk,   // Auto refresh clock
-    input               ar_rst_n, // Auto refresh reset
-    input               ar_en,    // Auto refresh enable
-    input               init_end, // Auto refresh end flag
+    input  wire          ar_clk,   // Auto refresh clock
+    input  wire          ar_rst_n, // Auto refresh reset
+    input  wire          ar_en,    // Auto refresh enable
+    input  wire          init_end, // Auto refresh end flag
 
-    output reg          ar_req,   // Auto refresh request, output to the
-                                  // arbitration module and initiate an auto
-                                  // refresh request
-    output reg          ar_end,   // Auto refresh end flag, After completion,
-                                  // it is pulled high for one clock cycle and
-                                  // notified to the arbitration module
-    output reg [ 3 : 0] ar_cmd,   // Auto refresh Command: {CS#, RAS#, CAS#, WE#}
-    output reg [ 1 : 0] ar_bank,  // Auto refresh bank address
-    output reg [12 : 0] ar_addr   // Auto refresh data address
+    output reg           ar_req,   // Auto refresh request, output to the
+                                   // arbitration module and initiate an auto
+                                   // refresh request
+    output reg           ar_end,   // Auto refresh end flag, After completion,
+                                   // it is pulled high for one clock cycle and
+                                   // notified to the arbitration module
+    output reg  [ 3 : 0] ar_cmd,   // Auto refresh Command: {CS#, RAS#, CAS#, WE#}
+    output reg  [ 1 : 0] ar_bank,  // Auto refresh bank address
+    output reg  [12 : 0] ar_addr   // Auto refresh data address
 );
 
 `include "Config-AC.v"
