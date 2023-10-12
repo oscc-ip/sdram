@@ -2,7 +2,7 @@ module sdram_init(
     input  wire          init_clk,   // Init clock
     input  wire          init_rst_n, // Init reset
 
-    output reg           init_end,   // Init end flag
+    output wire          init_end,   // Init end flag
     output reg  [ 3 : 0] init_cmd,   // Init command: {CS#, RAS#, CAS#, WE#}
     output reg  [ 1 : 0] init_bank,  // Init bank address
     output reg  [12 : 0] init_addr   // Init data address
@@ -54,15 +54,13 @@ wire flag_tmrd; // Mode register configures wait time flag
 
 //-----------------------------------------------------------------------------
 
-// Because the state jump is sequential logic, the flag signal of the waiting
-// parameter is raised in the previous cycle to make the state jump
-assign flag_wait =  (cnt_wait == CNT_WAIT - 'd1) ?
+assign flag_wait =  (cnt_wait == CNT_WAIT - 1'b1) ?
                      1'b1 : 1'b0;
-assign flag_trp  = ((state_curr == STATE_TRP ) && (cnt_fsm == TRP  - 1'b1)) ?
+assign flag_trp  = ((state_curr == STATE_TRP ) && (cnt_fsm == TRP)) ?
                      1'b1 : 1'b0;
-assign flag_trfc = ((state_curr == STATE_TRFC) && (cnt_fsm == TRFC - 1'b1)) ?
+assign flag_trfc = ((state_curr == STATE_TRFC) && (cnt_fsm == TRFC)) ?
                      1'b1 : 1'b0;
-assign flag_tmrd = ((state_curr == STATE_TMRD) && (cnt_fsm == TMRD - 1'b1)) ?
+assign flag_tmrd = ((state_curr == STATE_TMRD) && (cnt_fsm == TMRD)) ?
                      1'b1 : 1'b0;
 
 always @(posedge init_clk or negedge init_rst_n) begin
@@ -115,17 +113,7 @@ always @(*) begin
     endcase
 end
 
-always @(posedge init_clk or negedge init_rst_n) begin
-    if (!init_rst_n) begin
-        init_end <= 1'b0;
-    end
-    else if (state_curr == STATE_END) begin
-        init_end <= 1'b1;
-    end
-    else begin
-        init_end <= 1'b0;
-    end
-end
+assign init_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
 
 //-----------------------------------------------------------------------------
 
