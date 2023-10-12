@@ -20,7 +20,8 @@ module sdram_read(
 //-----------------------------------------------------------------------------
 
 localparam TRCD = (tRCD / 1000 / 10 + 1),
-           TCL  = (tCL  / 1000 / 10 + 1),
+        //    TCL  = (tCL  / 1000 / 10 + 1),
+           TCL = 3,
            TRP  = (tRP  / 1000 / 10 + 1);
 
 localparam CMD_NOP      = 4'b0111,
@@ -48,21 +49,21 @@ reg [15 : 0] rd_data_tmp;
 wire flag_trcd_end;
 wire flag_tcl_end;
 wire flag_trp_end;
-wire flag_rd_end;
 wire flag_rd_bst_end;
+wire flag_rd_end;
 
 //-----------------------------------------------------------------------------
 
-assign flag_trcd_end   = ((state_curr == STATE_TRCD) &&
-                          (cnt_fsm == TRCD)) ? 1'b1 : 1'b0;
-assign flag_tcl_end    = ((state_curr == STATE_TCL)  &&
-                          (cnt_fsm == TCL))  ? 1'b1 : 1'b0;
-assign flag_trp_end    = ((staet_curr == STATE_TRP)  &&
-                          (cnt_fsm == TRP))  ? 1'b1 : 1'b0;
-assign flag_rd_end     = ((state_curr == STATE_RD)   &&
-                          (cnt_fsm == rd_bst_len)) ? 1'b1 : 1'b0;
-assign flag_rd_bst_end = ((state_curr == STATE_RD)   &&
+assign flag_trcd_end   = ((state_curr == STATE_TRCD)   &&
+                          (cnt_fsm == TRCD))           ? 1'b1 : 1'b0;
+assign flag_tcl_end    = ((state_curr == STATE_TCL)    &&
+                          (cnt_fsm == TCL - 1'd1))     ? 1'b1 : 1'b0;
+assign flag_trp_end    = ((state_curr == STATE_TRP)    &&
+                          (cnt_fsm == TRP))            ? 1'b1 : 1'b0;
+assign flag_rd_bst_end = ((state_curr == STATE_DATA)   &&
                           (cnt_fsm == rd_bst_len - 4)) ? 1'b1 : 1'b0;
+assign flag_rd_end     = ((state_curr == STATE_DATA)   &&
+                          (cnt_fsm == rd_bst_len + 2)) ? 1'b1 : 1'b0;
 
 always @(posedge rd_clk or negedge rd_rst_n) begin
     if (!rd_rst_n) begin
@@ -77,7 +78,7 @@ always @(posedge rd_clk or negedge rd_rst_n) begin
 end
 
 always @(*) begin
-    case (staet_curr)
+    case (state_curr)
         STATE_IDLE: cnt_fsm_rst <= 1'b1;
         STATE_TRCD: cnt_fsm_rst <= (flag_trcd_end) ? 1'b1 : 1'b0;
         STATE_RD:   cnt_fsm_rst <= 1'b1;
@@ -102,7 +103,7 @@ assign rd_ack = (state_curr == STATE_RD) &&
                 (cnt_fsm >= 10'd1) &&
                 (cnt_fsm < (rd_bst_len + 2'd1));
 assign rd_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
-assign rd_sdram_data = (rd_ack == 1'b1) ? rd_data_tmp : 16'b0;
+assign rd_sdram_data = (rd_ack) ? rd_data_tmp : 16'b0;
 
 //-----------------------------------------------------------------------------
 
