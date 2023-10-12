@@ -29,6 +29,8 @@ wire [ 1 : 0] wr_sdram_bank;
 wire [12 : 0] wr_sdram_addr;
 wire [15 : 0] wr_sdram_data;
 
+reg  [ 3 : 0] wr_cnt;
+
 initial begin
     clk   = 1'b1;
     rst_n = 1'b0;
@@ -40,12 +42,14 @@ always #(CYCLE / 2) clk = ~clk;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        wr_en <= 1'b0;
+        wr_en  <= 1'b0;
+        wr_cnt <= 4'd0;
     end
     else if (wr_end) begin
-        wr_en <= 1'b0;
+        wr_en  <= 1'b0;
+        wr_cnt <= wr_cnt + 1'd1;
     end
-    else if (init_end) begin
+    else if (init_end && wr_cnt < 4'd1) begin
         wr_en <= 1'b1;
     end
     else begin
@@ -61,7 +65,7 @@ always @(posedge clk or negedge rst_n) begin
         wr_data <= 16'd0;
     end
     else if (wr_ack) begin
-        wr_data <= wr_data + 1'b1;
+        wr_data <= wr_data + 1'd1;
     end
     else begin
         wr_data <= wr_data;
@@ -114,20 +118,34 @@ W989DxDB sdram_inst(
     .dqm  (2'b0)
 );
 
-reg [79 : 0] state_curr;
+reg [79 : 0] state_curr_init;
+reg [79 : 0] state_curr_wr;
+
+always @(*) begin
+    case (sdram_init_inst.state_curr)
+        3'b000:  state_curr_init = "STATE_IDLE";
+        3'b001:  state_curr_init = "STATE_PRE ";
+        3'b011:  state_curr_init = "STATE_TRP ";
+        3'b010:  state_curr_init = "STATE_AR  ";
+        3'b110:  state_curr_init = "STATE_TRFC";
+        3'b111:  state_curr_init = "STATE_MRS ";
+        3'b101:  state_curr_init = "STATE_TMRD";
+        3'b100:  state_curr_init = "STATE_END ";
+        default: state_curr_init = "STATE_IDLE";
+    endcase
+end
 
 always @(*) begin
     case (sdram_write_inst.state_curr)
-        4'b0000: state_curr = "STATE_IDLE";
-        4'b0001: state_curr = "STATE_ACT ";
-        4'b0011: state_curr = "STATE_TRCD";
-        4'b0010: state_curr = "STATE_RD  ";
-        4'b0100: state_curr = "STATE_TCL ";
-        4'b0101: state_curr = "STATE_DATA";
-        4'b0111: state_curr = "STATE_PRE ";
-        4'b0110: state_curr = "STATE_TRP ";
-        4'b1100: state_curr = "STATE_END ";
-        default: state_curr = "STATE_IDLE";
+        3'b000:  state_curr_wr = "STATE_IDLE";
+        3'b001:  state_curr_wr = "STATE_ACT ";
+        3'b011:  state_curr_wr = "STATE_TRCD";
+        3'b010:  state_curr_wr = "STATE_WR  ";
+        3'b100:  state_curr_wr = "STATE_DATA";
+        3'b101:  state_curr_wr = "STATE_PRE ";
+        3'b111:  state_curr_wr = "STATE_TRP ";
+        3'b110:  state_curr_wr = "STATE_END ";
+        default: state_curr_wr = "STATE_IDLE";
     endcase
 end
 

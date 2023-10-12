@@ -55,11 +55,11 @@ wire flag_trp_end;  // Precharge waiting time flag
 //-----------------------------------------------------------------------------
 
 assign flag_trcd_end = ((state_curr == STATE_TRCD) &&
-                        (cnt_fsm == TRCD - 1'b1)) ? 1'b1 : 1'b0;
+                        (cnt_fsm == TRCD))              ? 1'b1 : 1'b0;
 assign flag_wr_end   = ((state_curr == STATE_DATA) &&
-                        (cnt_fsm == wr_bst_len - 1'b1)) ? 1'b1 : 1'b0;
+                        (cnt_fsm == wr_bst_len - 1'd1)) ? 1'b1 : 1'b0;
 assign flag_trp_end  = ((state_curr == STATE_TRP)  &&
-                        (cnt_fsm == TRP - 1'b1)) ? 1'b1 : 1'b0;
+                        (cnt_fsm == TRP))               ? 1'b1 : 1'b0;
 
 always @(posedge wr_clk or negedge wr_rst_n) begin
     if (!wr_rst_n) begin
@@ -98,7 +98,7 @@ always @(posedge wr_clk or negedge wr_rst_n) begin
     end
 end
 
-assign wr_sdram_data = (wr_sdram_en == 1'b1) ? wr_data : 16'b0;
+assign wr_sdram_data = (wr_sdram_en) ? wr_data : 16'b0;
 
 //-----------------------------------------------------------------------------
 
