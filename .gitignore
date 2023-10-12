@@ -2,6 +2,9 @@
 *.log
 *.key
 *.diag
+*.dd
+*.lib
+*.var
 .simvision/
 INCA_libs/
 waves.shm/

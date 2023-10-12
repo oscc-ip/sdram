@@ -15,7 +15,9 @@ else
 endif
 
 ifeq ($(filter $(MODULES), $(MODULE)), )
-    $(error $$MODULE is incorrect, optional values in [$(MODULES)])
+    ifneq ($(MAKECMDGOALS), clean)
+        $(error $$MODULE is incorrect, optional values in [$(MODULES)])
+    endif
 else
     MODULE_RTL = ../rtl/ctrl/modules/sdram_$(MODULE).v
     MODULE_SIM = ../sim/ctrl/modules/tb_sdram_$(MODULE).v
@@ -32,11 +34,10 @@ endif
 
 sim:
 	cd models && \
-	ncverilog $(GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+	nclaunch $(GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		$(MODULE_RTL) \
 		$(MODULE_SIM)
 clean:
-	find -name "*.log" -o -name "*.history" -o -name "*.key" | xargs rm -f
-	find -name ".simvision" | xargs rm -rf
-	find -name "INCA_libs" | xargs rm -rf
-	find -name "waves.shm" | xargs rm -rf
+	find ./models -not -name "*.vp" -not -name "*.v" | \
+		tail -n +2 | \
+		xargs rm -rf
