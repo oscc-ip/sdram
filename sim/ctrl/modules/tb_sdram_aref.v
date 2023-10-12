@@ -41,10 +41,10 @@ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         ar_en <= 1'b0;
     end
-    else if ((init_end == 1'b1) && (ar_req == 1'b1)) begin
+    else if (init_end && ar_req) begin
         ar_en <= 1'b1;
     end
-    else if (ar_end == 1'b1) begin
+    else if (ar_end) begin
         ar_en <= 1'b0;
     end
     else begin
@@ -52,9 +52,9 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign sdram_cmd  = (init_end == 1'b1) ? ar_cmd  : init_cmd;
-assign sdram_bank = (init_end == 1'b1) ? ar_bank : init_bank;
-assign sdram_addr = (init_end == 1'b1) ? ar_addr : init_addr;
+assign sdram_cmd  = (init_end) ? ar_cmd  : init_cmd;
+assign sdram_bank = (init_end) ? ar_bank : init_bank;
+assign sdram_addr = (init_end) ? ar_addr : init_addr;
 
 sdram_init sdram_init_inst(
     .init_clk  (clk),

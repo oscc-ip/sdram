@@ -7,7 +7,7 @@ module sdram_aref(
     output reg           ar_req,   // Auto refresh request, output to the
                                    // arbitration module and initiate an auto
                                    // refresh request
-    output reg           ar_end,   // Auto refresh end flag, After completion,
+    output wire          ar_end,   // Auto refresh end flag, After completion,
                                    // it is pulled high for one clock cycle and
                                    // notified to the arbitration module
     output reg  [ 3 : 0] ar_cmd,   // Auto refresh Command: {CS#, RAS#, CAS#, WE#}
@@ -47,7 +47,7 @@ localparam STATE_IDLE = 3'b000, // Init state
 reg [ 2 : 0] state_curr;  // State machine current state
 reg [ 2 : 0] state_next;  // State machine next state
 reg [15 : 0] cnt_ar_time; // Auto refresh time counter
-reg [ 1 : 0] cnt_ar;      // Auto refresh counter
+reg [ 3 : 0] cnt_ar;      // Auto refresh counter
 reg [ 3 : 0] cnt_fsm;     // State machine counter
 reg          cnt_fsm_rst; // State machine reset counter
 
@@ -58,11 +58,9 @@ wire flag_ar_ack; // Auto refresh request flag, used to pull down the refresh
 
 //-----------------------------------------------------------------------------
 
-// Because the state jump is sequential logic, the flag signal of the waiting
-// parameter is raised in the previous cycle to make the state jump
-assign flag_trp  = ((state_curr == STATE_TRP)  && (cnt_fsm == TRP  - 1'b1)) ?
+assign flag_trp  = ((state_curr == STATE_TRP)  && (cnt_fsm == TRP )) ?
                      1'b1 : 1'b0;
-assign flag_trfc = ((state_curr == STATE_TRFC) && (cnt_fsm == TRFC - 1'b1)) ?
+assign flag_trfc = ((state_curr == STATE_TRFC) && (cnt_fsm == TRFC)) ?
                      1'b1 : 1'b0;
 // When sending precharge, it means that the auto refresh module responds to
 // the auto refresh enable given by the arbitration module, so aref_ack is
@@ -88,10 +86,10 @@ end
 
 always @(posedge ar_clk or negedge ar_rst_n) begin
     if (!ar_rst_n) begin
-        cnt_ar <= 2'b0;
+        cnt_ar <= 4'd0;
     end
     else if (state_curr == STATE_IDLE) begin
-        cnt_ar <= 2'b0;
+        cnt_ar <= 4'd0;
     end
     else if (state_curr == STATE_AR) begin
         cnt_ar <= cnt_ar + 1'd1;
@@ -138,17 +136,7 @@ always @(posedge ar_clk or negedge ar_rst_n) begin
     end
 end
 
-always @(posedge ar_clk or negedge ar_rst_n) begin
-    if (!ar_rst_n) begin
-        ar_end <= 1'b0;
-    end
-    else if (flag_trfc && cnt_ar == CNT_AR) begin
-        ar_end <= 1'b1;
-    end
-    else begin
-        ar_end <= 1'b0;
-    end
-end
+assign ar_end = (state_curr == STATE_END) ? 1'b1 : 1'b0;
 
 //-----------------------------------------------------------------------------
 
