@@ -1,4 +1,4 @@
-.PHONY: sim clean
+.PHONY: sim-verilog sim-launch clean
 
 GUI ?=
 MODULES = init aref write read arbit ctrl model
@@ -19,7 +19,9 @@ ifeq ($(filter $(MODULES), $(MODULE)), )
         $(error $$MODULE is incorrect, optional values in [$(MODULES)])
     endif
 else
-    MODULE_RTL = ../rtl/ctrl/modules/sdram_$(MODULE).v
+    MODULE_RTL = \
+        ../rtl/ctrl/modules/sdram_init.v \
+        ../rtl/ctrl/modules/sdram_$(MODULE).v
     MODULE_SIM = ../sim/ctrl/modules/tb_sdram_$(MODULE).v
     ifeq ($(MODULE), ctrl)
         MODULE_RTL = ../rtl/ctrl/sdram_ctrl.v
@@ -28,13 +30,16 @@ else
         MODULE_RTL =
         MODULE_SIM = ../sim/tb_sdram_model.v
     endif
-    $(info $(MODULE_RTL))
-    $(info $(MODULE_SIM))
 endif
 
-sim:
+sim-verilog:
 	cd models && \
-	nclaunch $(GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+	ncverilog $(GUI_TEMP) +access+r +define+clk_133+x16 W989DxDB.nc.vp \
+		$(MODULE_RTL) \
+		$(MODULE_SIM)
+sim-launch:
+	cd models && \
+	nclaunch +access+r +define+clk_133+x16 W989DxDB.nc.vp \
 		$(MODULE_RTL) \
 		$(MODULE_SIM)
 clean:

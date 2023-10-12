@@ -1,9 +1,10 @@
-*.history
-*.log
-*.key
-*.diag
 *.dd
+*.diag
+*.err
+*.history
+*.key
 *.lib
+*.log
 *.var
 .simvision/
 INCA_libs/
