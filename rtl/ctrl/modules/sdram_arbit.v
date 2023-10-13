@@ -110,7 +110,7 @@ assign { sdram_cs_n, sdram_ras_n, sdram_cas_n, sdram_we_n } = sdram_cmd;
 assign sdram_dq  = (wr_sdram_en) ? wr_sdram_data : 16'bz;
 
 always @(posedge arb_clk or negedge arb_rst_n) begin
-    if 9!arb_rst_n) begin
+    if (!arb_rst_n) begin
         state_curr <= STATE_IDLE;
     end
     else begin
