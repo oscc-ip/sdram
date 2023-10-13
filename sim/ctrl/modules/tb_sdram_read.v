@@ -40,6 +40,8 @@ wire [ 3 : 0] wr_rd_sdram_cmd;
 wire [ 1 : 0] wr_rd_sdram_bank;
 wire [15 : 0] wr_rd_sdram_addr;
 
+reg  [ 3 : 0] rd_cnt;
+
 initial begin
     clk   = 1'b1;
     rst_n = 1'b0;
@@ -78,12 +80,14 @@ end
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        rd_en <= 1'b0;
+        rd_en  <= 1'b0;
+        rd_cnt <= 4'd0;
     end
     else if (rd_end) begin
         rd_en <= 1'b0;
+        rd_cnt <= rd_cnt + 1'd1;
     end
-    else if (!wr_en) begin
+    else if (!wr_en && rd_cnt < 4'd1) begin
         rd_en <= 1'b1;
     end
     else begin

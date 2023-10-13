@@ -20,8 +20,7 @@ module sdram_read(
 //-----------------------------------------------------------------------------
 
 localparam TRCD = (tRCD / 1000 / 10 + 1),
-        //    TCL  = (tCL  / 1000 / 10 + 1),
-           TCL = 3,
+           TCL  = (tCL  / 1000      + 1),
            TRP  = (tRP  / 1000 / 10 + 1);
 
 localparam CMD_NOP      = 4'b0111,
@@ -55,15 +54,20 @@ wire flag_rd_end;
 //-----------------------------------------------------------------------------
 
 assign flag_trcd_end   = ((state_curr == STATE_TRCD)   &&
-                          (cnt_fsm == TRCD))           ? 1'b1 : 1'b0;
+                          (cnt_fsm == TRCD))                      ?
+                          1'b1 : 1'b0;
 assign flag_tcl_end    = ((state_curr == STATE_TCL)    &&
-                          (cnt_fsm == TCL - 1'd1))     ? 1'b1 : 1'b0;
+                          (cnt_fsm == TCL - 1'd1))                ?
+                          1'b1 : 1'b0;
 assign flag_trp_end    = ((state_curr == STATE_TRP)    &&
-                          (cnt_fsm == TRP))            ? 1'b1 : 1'b0;
+                          (cnt_fsm == TRP))                       ?
+                          1'b1 : 1'b0;
 assign flag_rd_bst_end = ((state_curr == STATE_DATA)   &&
-                          (cnt_fsm == rd_bst_len - 4)) ? 1'b1 : 1'b0;
+                          (cnt_fsm == rd_bst_len - (TCL + 1'd1))) ?
+                          1'b1 : 1'b0;
 assign flag_rd_end     = ((state_curr == STATE_DATA)   &&
-                          (cnt_fsm == rd_bst_len + 2)) ? 1'b1 : 1'b0;
+                          (cnt_fsm == rd_bst_len + (TCL - 1'd1))) ?
+                          1'b1 : 1'b0;
 
 always @(posedge rd_clk or negedge rd_rst_n) begin
     if (!rd_rst_n) begin
@@ -243,7 +247,5 @@ always @(posedge rd_clk or negedge rd_rst_n) begin
         endcase
     end
 end
-
-
 
 endmodule
