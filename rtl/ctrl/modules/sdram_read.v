@@ -20,7 +20,7 @@ module sdram_read(
 //-----------------------------------------------------------------------------
 
 localparam TRCD = (tRCD / 1000 / 10 + 1),
-           TCL  = (tCL  / 1000      + 1),
+           TCL  = 3,
            TRP  = (tRP  / 1000 / 10 + 1);
 
 localparam CMD_NOP      = 4'b0111,
