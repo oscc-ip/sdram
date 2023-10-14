@@ -38,7 +38,7 @@ module sdram_arbit(
     output wire          sdram_we_n,
     output reg  [ 1 : 0] sdram_bank,
     output reg  [12 : 0] sdram_addr,
-    output reg  [15 : 0] sdram_dq
+    output wire [15 : 0] sdram_dq
 );
 
 `include "Config-AC.v"
@@ -63,7 +63,7 @@ always @(posedge arb_clk or negedge arb_rst_n) begin
     if (!arb_rst_n) begin
         ar_en <= 1'b0;
     end
-    eles if ((state_curr == STATE_ARB) && ar_req) begin
+    else if ((state_curr == STATE_ARB) && ar_req) begin
         ar_en <= 1'b1;
     end
     else if (ar_end) begin
