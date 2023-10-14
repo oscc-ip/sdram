@@ -66,4 +66,9 @@ always @(*) begin
     endcase
 end
 
+initial begin
+    $monitor("Command Display %s at the time %t", sdram_inst.command_display,
+                                                  $time);
+end
+
 endmodule
