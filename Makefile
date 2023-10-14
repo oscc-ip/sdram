@@ -7,7 +7,7 @@ MODULE_RTL_PREFIX := ../rtl/ctrl/modules/sdram_
 MODULE_SIM_PREFIX := ../sim/ctrl/modules/tb_sdram_
 CTRL_RTL_PREFIX   := ../rtl/ctrl/sdram_
 CTRL_SIM_PREFIX   := ../sim/ctrl/tb_sdram_
-BUILD_OPT         := +access+r +define+clk_133+x16
+BUILD_OPT         := +access+r +define+clk_133+dumpfile+x16
 
 ifeq ($(GUI), y)
     GUI_TEMP = -gui
@@ -45,6 +45,7 @@ else
                      $(MODULE_RTL_PREFIX)aref.v  \
                      $(MODULE_RTL_PREFIX)write.v \
                      $(MODULE_RTL_PREFIX)read.v  \
+                     $(MODULE_RTL_PREFIX)arbit.v \
                      $(CTRL_RTL_PREFIX)ctrl.v
         MODULE_SIM = $(CTRL_SIM_PREFIX)ctrl.v
     else ifeq ($(MODULE), model)
