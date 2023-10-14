@@ -78,7 +78,7 @@ end
 sdram_ctrl sdram_ctrl_inst(
     .sdram_clk       (clk),
     .sdram_rst_n     (rst_n),
-    .sdram_init_end  (init_end)
+    .sdram_init_end  (init_end),
 
     .sdram_wr_req    (wr_req),
     .sdram_wr_addr   (24'h000000),
