@@ -36,7 +36,11 @@ end
 
 always #(CYCLE / 2) clk = ~clk;
 
-fifo fifo_wr_inst(
+fifo #(
+    .DATA_WIDTH(16),
+    .DATA_DEPTH(10)
+)
+fifo_wr_inst(
     .clr       (~fifo_clk || fifo_wr_rst),
 
     .wr_clk    (fifo_wr_clk),
@@ -51,7 +55,11 @@ fifo fifo_wr_inst(
     .rd_use_num()
 );
 
-fifo fifo_rd_inst(
+fifo #(
+    .DATA_WIDTH(16),
+    .DATA_DEPTH(10)
+)
+fifo_rd_inst (
     .clr       (~fifo_clk || fifo_rd_rst),
 
     .wr_clk    (fifo_clk),
