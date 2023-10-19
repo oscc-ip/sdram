@@ -45,21 +45,27 @@ always @(posedge wr_clk) begin
         wr_full    <= 1'b0;
     end
     else if (wr_req & wr_valid) begin
-        fifo[wr_use_num] <= wr_data;
-        wr_use_num       <= wr_use_num + 1'd1;
+        if (cnt == 1'b0) begin
+            wr_use_num <= { (DATA_DEPTH){1'b0} };
+        end
+        fifo[cnt] <= wr_data;
         if (~(rd_req & rd_valid)) begin
-            cnt <= cnt + 1'd1;
+            cnt        <= cnt + 1'd1;
+            wr_use_num <= wr_use_num + 1'd1;
         end
     end
 
     if (cnt == 1'b0) begin
         wr_empty <= 1'b1;
+        if (!wr_req) begin
+            wr_use_num <= { (DATA_DEPTH){1'b0} };
+        end
     end
     else begin
         wr_empty <= 1'b0;
     end
 
-    if (cnt == DATA_DEPTH) begin
+    if (cnt == DATA_DEPTH - 1'b1) begin
         wr_full <= 1'b1;
     end
     else begin
@@ -74,20 +80,21 @@ always @(posedge rd_clk) begin
         rd_full    <= 1'b0;
     end
     else if (rd_req & rd_valid) begin
-        rd_use_num <= rd_use_num + 1'd1;
         if (~(wr_req & wr_valid)) begin
-            cnt <= cnt - 1'd1;
+            cnt        <= cnt - 1'd1;
+            rd_use_num <= rd_use_num + 1'd1;
         end
     end
 
     if (cnt == 1'b0) begin
-        rd_empty <= 1'b1;
+        rd_empty   <= 1'b1;
+        rd_use_num <= { (DATA_DEPTH){1'b0} };
     end
     else begin
         rd_empty <= 1'b0;
     end
 
-    if (cnt == DATA_DEPTH) begin
+    if (cnt == DATA_DEPTH - 1'b1) begin
         rd_full <= 1'b1;
     end
     else begin
@@ -98,6 +105,8 @@ end
 assign wr_valid = (cnt != DATA_DEPTH);
 assign rd_valid = (cnt != 1'b0);
 
-assign rd_data  = (clr) ? { (DATA_WIDTH){1'b0} } : fifo[rd_use_num];
+assign rd_data  = (clr) ?                  { (DATA_WIDTH){1'b0} } :
+                  (~(rd_req & rd_valid)) ? { (DATA_WIDTH){1'b0} } :
+                  fifo[rd_use_num];
 
 endmodule
