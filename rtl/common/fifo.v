@@ -19,7 +19,7 @@ module fifo #(
     output reg                       wr_empty,
     output reg                       rd_empty,
     output reg                       wr_full,
-    output reg                       rd_full,
+    output reg                       rd_full
 );
 
 //-----------------------------------------------------------------------------
@@ -51,11 +51,24 @@ always @(posedge wr_clk) begin
             cnt <= cnt + 1'd1;
         end
     end
+
+    if (cnt == 1'b0) begin
+        wr_empty <= 1'b1;
+    end
+    else begin
+        wr_empty <= 1'b0;
+    end
+
+    if (cnt == DATA_DEPTH) begin
+        wr_full <= 1'b1;
+    end
+    else begin
+        wr_full <= 1'b0;
+    end
 end
 
 always @(posedge rd_clk) begin
     if (clr) begin
-        rd_data    <= { (DATA_WIDTH){1'b0} };
         rd_use_num <= { (DATA_DEPTH){1'b0} };
         rd_empty   <= 1'b0;
         rd_full    <= 1'b0;
@@ -66,11 +79,25 @@ always @(posedge rd_clk) begin
             cnt <= cnt - 1'd1;
         end
     end
+
+    if (cnt == 1'b0) begin
+        rd_empty <= 1'b1;
+    end
+    else begin
+        rd_empty <= 1'b0;
+    end
+
+    if (cnt == DATA_DEPTH) begin
+        rd_full <= 1'b1;
+    end
+    else begin
+        rd_full <= 1'b0;
+    end
 end
 
 assign wr_valid = (cnt != DATA_DEPTH);
 assign rd_valid = (cnt != 1'b0);
 
-assign rd_data = (clr) ? { (DATA_WIDTH){1'b0} } : fifo[rd_use_num];
+assign rd_data  = (clr) ? { (DATA_WIDTH){1'b0} } : fifo[rd_use_num];
 
 endmodule
