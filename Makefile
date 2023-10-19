@@ -31,15 +31,17 @@ else
         MODULE_RTL =
         MODULE_SIM = ../sim/tb_sdram_model.v
     else ifeq ($(MODULE), clk)
-        BUILD_OPT  =
         SIM_MODEL  =
         MODULE_RTL = $(COMM_RTL_PREFIX)clk.v
         MODULE_SIM = $(COMM_SIM_PREFIX)clk.v
     else ifeq ($(MODULE), fifo)
-        BUILD_OPT  =
         SIM_MODEL  =
         MODULE_RTL = $(COMM_RTL_PREFIX)fifo.v
         MODULE_SIM = $(COMM_SIM_PREFIX)fifo.v
+    else ifeq ($(MODULE), axi4)
+        SIM_MODEL  =
+        MODULE_RTL = $(COMM_RTL_PREFIX)axi4.v
+        MODULE_SIM = $(COMM_SIM_PREFIX)axi4.v
     else ifeq ($(MODULE), init)
         MODULE_RTL = $(MODULE_RTL_PREFIX)init.v
         MODULE_SIM = $(MODULE_SIM_PREFIX)init.v
