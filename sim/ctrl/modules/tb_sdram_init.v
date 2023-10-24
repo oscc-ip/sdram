@@ -3,8 +3,7 @@
 module tb_sdram_init();
 
 `include "Config-AC.v"
-
-parameter CYCLE = 10;
+`include "../config/config.v"
 
 reg           clk;       // Clock
 reg           rst_n;     // Reset

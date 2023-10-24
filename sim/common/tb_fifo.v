@@ -2,7 +2,7 @@
 
 module tb_fifo();
 
-parameter CYCLE = 10;
+`include "../config/config.v"
 
 reg           fifo_clk;
 reg           fifo_rst_n;

@@ -10,7 +10,8 @@ CTRL_SIM_PREFIX   := ../sim/ctrl/tb_sdram_
 COMM_RTL_PREFIX   := ../rtl/common/
 COMM_SIM_PREFIX   := ../sim/common/tb_
 SIM_MODEL         := W989DxDB.nc.vp
-BUILD_OPT         := +access+r +define+clk_133+dumpfile+x16
+SIM_CONFIG        := ../config/config.v
+BUILD_OPT         := +access+r +define+clk_133+freq_100+dumpfile+x16
 
 ifeq ($(GUI), y)
     GUI_TEMP = -gui

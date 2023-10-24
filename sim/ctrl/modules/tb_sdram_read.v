@@ -3,8 +3,7 @@
 module tb_sdram_read();
 
 `include "Config-AC.v"
-
-parameter CYCLE = 10;
+`include "../config/config.v"
 
 reg           clk;
 reg           rst_n;
