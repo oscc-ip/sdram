@@ -47,15 +47,15 @@ module sdram_arbit(
 
 localparam CMD_NOP = 4'b0111;
 
-localparam STATE_IDLE = 4'b0000,
-           STATE_ARB  = 4'b0001,
-           STATE_AR   = 4'b0011,
-           STATE_WR   = 4'b0010,
-           STATE_RD   = 4'b0100;
+localparam STATE_IDLE = 3'b000,
+           STATE_ARB  = 3'b001,
+           STATE_AR   = 3'b011,
+           STATE_WR   = 3'b010,
+           STATE_RD   = 3'b100;
 
 reg [3 : 0] sdram_cmd;
-reg [3 : 0] state_curr;
-reg [3 : 0] state_next;
+reg [2 : 0] state_curr;
+reg [2 : 0] state_next;
 
 //-----------------------------------------------------------------------------
 
@@ -103,7 +103,6 @@ always @(posedge arb_clk or negedge arb_rst_n) begin
         rd_en <= rd_en;
     end
 end
-
 
 assign sdram_cke = 1'b1;
 assign { sdram_cs_n, sdram_ras_n, sdram_cas_n, sdram_we_n } = sdram_cmd;
