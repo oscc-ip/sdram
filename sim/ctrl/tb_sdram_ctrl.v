@@ -114,4 +114,9 @@ W989DxDB sdram_inst(
     .dqm  (2'b0)
 );
 
+initial begin
+    $monitor("Command Display %s at the time %t", sdram_inst.command_display,
+                                                  $time);
+end
+
 endmodule

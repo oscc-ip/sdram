@@ -85,7 +85,7 @@ sdram_arbit sdram_arbit_inst(
 
     .sdram_cke    (sdram_cke),
     .sdram_cs_n   (sdram_cs_n),
-    .sdram_ras_n  (sdram_rst_n),
+    .sdram_ras_n  (sdram_ras_n),
     .sdram_cas_n  (sdram_cas_n),
     .sdram_we_n   (sdram_we_n),
     .sdram_bank   (sdram_bank),
