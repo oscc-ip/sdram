@@ -132,35 +132,34 @@ always @(posedge sdram_clk or negedge sdram_rst_n) begin
     end
 end
 
-fifo fifo_wr_inst(
-    .clr       (~fifo_clk || fifo_wr_rst),
+// fifo fifo_wr_inst(
+//     .clr       (~fifo_clk || fifo_wr_rst),
 
-    .wr_clk    (fifo_wr_clk),
-    .wr_req    (fifo_wr_req),
-    .wr_data   (fifo_wr_data),
+//     .wr_clk    (fifo_wr_clk),
+//     .wr_req    (fifo_wr_req),
+//     .wr_data   (fifo_wr_data),
 
-    .rd_clk    (fifo_clk),
-    .rd_req    (sdram_wr_ack),
-    .rd_data   (sdram_wr_data),
+//     .rd_clk    (fifo_clk),
+//     .rd_req    (sdram_wr_ack),
+//     .rd_data   (sdram_wr_data),
 
-    .wr_use_num(fifo_wr_num),
-    .rd_use_num()
-);
+//     .wr_use_num(fifo_wr_num),
+//     .rd_use_num()
+// );
 
-fifo fifo_rd_inst(
-    .clr       (~fifo_clk || fifo_rd_rst),
+// fifo fifo_rd_inst(
+//     .clr       (~fifo_clk || fifo_rd_rst),
 
-    .wr_clk    (fifo_clk),
-    .wr_req    (sdram_rd_ack),
-    .wr_data   (sdram_rd_data),
+//     .wr_clk    (fifo_clk),
+//     .wr_req    (sdram_rd_ack),
+//     .wr_data   (sdram_rd_data),
 
-    .rd_clk    (fifo_rd_clk),
-    .rd_req    (fifo_rd_req),
-    .rd_data   (fifo_rd_data),
+//     .rd_clk    (fifo_rd_clk),
+//     .rd_req    (fifo_rd_req),
+//     .rd_data   (fifo_rd_data),
 
-    .wr_use_num(),
-    .rd_use_num(fifo_rd_num)
-);
-
+//     .wr_use_num(),
+//     .rd_use_num(fifo_rd_num)
+// );
 
 endmodule
