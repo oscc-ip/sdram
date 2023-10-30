@@ -1,4 +1,4 @@
-.PHONY: sim-verilog sim-launch clean
+.PHONY: sim-ncvlog sim-nclaunch clean
 
 GUI               ?=
 MODULE            ?=
@@ -73,12 +73,14 @@ else
     endif
 endif
 
-sim-verilog:
+sim-ivlog:
+
+sim-ncvlog:
 	cd models &&                                    \
 	ncverilog $(GUI_TEMP) $(BUILD_OPT) $(SIM_MODEL) \
 		$(MODULE_RTL)                               \
 		$(MODULE_SIM)
-sim-launch:
+sim-nclaunch:
 	cd models &&                                    \
 	nclaunch              $(BUILD_OPT) $(SIM_MODEL) \
 		$(MODULE_RTL)                               \
