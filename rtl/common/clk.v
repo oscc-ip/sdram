@@ -10,7 +10,8 @@ module clk #(
 
     output reg  o_clk_div_even,
     output wire o_clk_div_odd,
-    output wire o_clk_mul_dly_2x
+    output wire o_clk_mul_dly_2x,
+    output wire o_clk_mul_dly_2x_90
 );
 
 //-----------------------------------------------------------------------------
@@ -112,5 +113,13 @@ always @(posedge i_clk or negedge i_clk or negedge i_rst_n) begin
 end
 
 assign o_clk_mul_dly_2x = i_clk ^ clk_mul_dly_2x;
+
+//-----------------------------------------------------------------------------
+// Frequency Multiplier (Delay way) and Phase Offset +90 degrees
+
+wire clk_mul_dly_2x_inv;
+
+assign clk_mul_dly_2x_inv = ~o_clk_mul_dly_2x;
+assign o_clk_mul_dly_2x_90 = ~(i_clk ^ clk_mul_dly_2x_inv);
 
 endmodule
