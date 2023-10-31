@@ -15,7 +15,7 @@ module clk #(
 );
 
 //-----------------------------------------------------------------------------
-// Even Frequency Division
+// Even frequency division
 
 reg [7 : 0] cnt_div_even;
 
@@ -39,7 +39,7 @@ always @(posedge i_clk or negedge i_rst_n) begin
 end
 
 //-----------------------------------------------------------------------------
-// Odd Frequency Division
+// Odd frequency division
 
 reg [7 : 0] cnt_div_odd_pos;
 reg [7 : 0] cnt_div_odd_neg;
@@ -97,7 +97,7 @@ end
 assign o_clk_div_odd = clk_div_odd_pos | clk_div_odd_neg;
 
 //-----------------------------------------------------------------------------
-// Frequency Multiplier (Delay way)
+// Frequency multiplier (delay way)
 
 parameter CYCLE_REF = 20; // 50MHz
 
@@ -115,7 +115,7 @@ end
 assign o_clk_mul_dly_2x = i_clk ^ clk_mul_dly_2x;
 
 //-----------------------------------------------------------------------------
-// Frequency Multiplier (Delay way) and Phase Offset +90 degrees
+// Frequency multiplier (delay way) and phase offset +90 degrees
 
 wire clk_mul_dly_2x_inv;
 

@@ -67,10 +67,10 @@ else
 endif
 
 sim-ivlog:
-	mkdir -p build &&                                    \
-	cd build &&                                          \
-	iverilog -o $(MODULE) $(MODULE_RTL) $(MODULE_SIM) && \
-	vvp -v $(MODULE) -lxt2 &&                            \
+	mkdir -p build &&                                       \
+	cd build &&                                             \
+	iverilog -g2005-sv -o $(MODULE) $(MODULE_RTL) $(MODULE_SIM) && \
+	vvp -v $(MODULE) -lxt2 &&                               \
 	gtkwave wave.vcd
 sim-ncvlog:
 	cd models &&                                    \
