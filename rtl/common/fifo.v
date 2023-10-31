@@ -8,16 +8,14 @@ module fifo #(
     input  wire                 i_wr_rst_n,
     input  wire                 i_wr_en,
     input  wire [WIDTH - 1 : 0] i_wr_data,
-    // output reg                  o_wr_full,
-    output wire o_wr_full,
+    output wire                 o_wr_full,
     output reg  [DEPTH - 1 : 0] o_wr_use,
 
     input  wire                 i_rd_clk,
     input  wire                 i_rd_rst_n,
     input  wire                 i_rd_en,
     output reg  [WIDTH - 1 : 0] o_rd_data,
-    // output reg                  o_rd_empty,
-    output wire o_rd_empty,
+    output wire                 o_rd_empty,
     output reg  [DEPTH - 1 : 0] o_rd_use
 );
 
@@ -90,38 +88,18 @@ end
 //-----------------------------------------------------------------------------
 
 // Write full judgment
-// always @(posedge i_wr_clk or negedge i_wr_rst_n) begin
-//     if (!i_wr_rst_n) begin
-//         o_wr_full <= 0;
-//     end
-//     else if ((wr_ptr_grey[$clog2(DEPTH)]         != rd_ptr_grey_d2[$clog2(DEPTH)])     &&
-//              (wr_ptr_grey[$clog2(DEPTH) - 1]     != rd_ptr_grey_d2[$clog2(DEPTH) - 1]) &&
-//              (wr_ptr_grey[$clog2(DEPTH) - 2 : 0] == rd_ptr_grey_d2[$clog2(DEPTH) - 2 : 0])) begin
-//         o_wr_full <= 1;
-//     end
-//     else begin
-//         o_wr_full <= 0;
-//     end
-// end
+assign o_wr_full = (!i_wr_rst_n) ? 0 :
+                   ((wr_ptr_grey   [$clog2(DEPTH)]         !=
+                     rd_ptr_grey_d2[$clog2(DEPTH)])        &&
+                    (wr_ptr_grey   [$clog2(DEPTH) - 1]     !=
+                     rd_ptr_grey_d2[$clog2(DEPTH) - 1])    &&
+                    (wr_ptr_grey   [$clog2(DEPTH) - 2 : 0] ==
+                     rd_ptr_grey_d2[$clog2(DEPTH) - 2 : 0])) ? 1 : 0;
 
-assign o_wr_full = (!i_wr_rst_n) ? 0 : ((wr_ptr_grey[$clog2(DEPTH)]         != rd_ptr_grey_d2[$clog2(DEPTH)])     &&
-             (wr_ptr_grey[$clog2(DEPTH) - 1]     != rd_ptr_grey_d2[$clog2(DEPTH) - 1]) &&
-             (wr_ptr_grey[$clog2(DEPTH) - 2 : 0] == rd_ptr_grey_d2[$clog2(DEPTH) - 2 : 0])) ? 1 : 0;
-
-// // Read empty judgment
-// always @(posedge i_rd_clk or negedge i_rd_rst_n) begin
-//     if (!i_rd_rst_n) begin
-//         o_rd_empty <= 0;
-//     end
-//     else if (wr_ptr_grey_d2[$clog2(DEPTH) : 0] == rd_ptr_grey[$clog2(DEPTH) : 0]) begin
-//         o_rd_empty <= 1;
-//     end
-//     else begin
-//         o_rd_empty <= 0;
-//     end
-// end
-
-assign o_rd_empty = (!i_rd_rst_n) ? 0 : (wr_ptr_grey_d2[$clog2(DEPTH) : 0] == rd_ptr_grey[$clog2(DEPTH) : 0]) ? 1 : 0;
+// Read empty judgment
+assign o_rd_empty = (!i_rd_rst_n) ? 0 :
+                    (wr_ptr_grey_d2[$clog2(DEPTH) : 0] ==
+                     rd_ptr_grey   [$clog2(DEPTH) : 0]) ? 1 : 0;
 
 // Write clock domain used space
 reg [$clog2(DEPTH) : 0] rd_ptr_grey_d2_bin;
