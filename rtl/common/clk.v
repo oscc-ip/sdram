@@ -10,8 +10,7 @@ module clk #(
 
     output reg  o_clk_div_even,
     output wire o_clk_div_odd,
-    output wire o_clk_mul_dly_2x,
-    output reg  o_clk_mul_pll
+    output wire o_clk_mul_dly_2x
 );
 
 //-----------------------------------------------------------------------------
@@ -103,7 +102,7 @@ parameter CYCLE_REF = 20; // 50MHz
 
 reg clk_mul_dly_2x;
 
-always @(posedge i_clk or negedge i_rst_n) begin
+always @(posedge i_clk or negedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) begin
         clk_mul_dly_2x <= 1'b0;
     end
