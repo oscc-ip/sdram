@@ -1,8 +1,9 @@
-.PHONY: sim-ncvlog sim-nclaunch clean
+.PHONY: sim-ivlog sim-ncvlog sim-nclaunch clean
 
 GUI               ?=
 MODULE            ?=
-MODULE_TYPE       := model clk fifo cfg axi4 init aref write read ctrl top
+MODULE_COMM       := axi4 clk fifo
+MODULE_TYPE       := model $(MODULE_COMM) init aref write read ctrl top
 MODULE_RTL_PREFIX := ../rtl/ctrl/modules/sdram_
 MODULE_SIM_PREFIX := ../sim/ctrl/modules/tb_sdram_
 CTRL_RTL_PREFIX   := ../rtl/ctrl/sdram_
@@ -31,18 +32,10 @@ else
     ifeq ($(MODULE), model)
         MODULE_RTL =
         MODULE_SIM = ../sim/tb_sdram_model.v
-    else ifeq ($(MODULE), clk)
+    else ifneq ($(filter $(MODULE_COMM), $(MODULE)), )
         SIM_MODEL  =
-        MODULE_RTL = $(COMM_RTL_PREFIX)clk.v
-        MODULE_SIM = $(COMM_SIM_PREFIX)clk.v
-    else ifeq ($(MODULE), fifo)
-        SIM_MODEL  =
-        MODULE_RTL = $(COMM_RTL_PREFIX)fifo.v
-        MODULE_SIM = $(COMM_SIM_PREFIX)fifo.v
-    else ifeq ($(MODULE), axi4)
-        SIM_MODEL  =
-        MODULE_RTL = $(COMM_RTL_PREFIX)axi4.v
-        MODULE_SIM = $(COMM_SIM_PREFIX)axi4.v
+        MODULE_RTL = $(COMM_RTL_PREFIX)$(MODULE).v
+        MODULE_SIM = $(COMM_SIM_PREFIX)$(MODULE).v
     else ifeq ($(MODULE), init)
         MODULE_RTL = $(MODULE_RTL_PREFIX)init.v
         MODULE_SIM = $(MODULE_SIM_PREFIX)init.v
@@ -74,7 +67,11 @@ else
 endif
 
 sim-ivlog:
-
+	mkdir -p build &&                                    \
+	cd build &&                                          \
+	iverilog -o $(MODULE) $(MODULE_RTL) $(MODULE_SIM) && \
+	vvp -v $(MODULE) -lxt2 &&                            \
+	gtkwave wave.vcd
 sim-ncvlog:
 	cd models &&                                    \
 	ncverilog $(GUI_TEMP) $(BUILD_OPT) $(SIM_MODEL) \
@@ -86,6 +83,7 @@ sim-nclaunch:
 		$(MODULE_RTL)                               \
 		$(MODULE_SIM)
 clean:
+	rm -rf build &&                                    \
 	find ./models -not -name "*.vp" -not -name "*.v" | \
 		tail -n +2 |                                   \
 		xargs rm -rf

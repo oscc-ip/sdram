@@ -16,17 +16,24 @@ initial begin
     sys_rst_n = 1'b0;
     #(CYCLE * 10)
     sys_rst_n = 1'b1;
+    #(CYCLE * 100)
+    $finish;
 end
 
 always #(CYCLE / 2) sys_clk = ~sys_clk;
 
 clk clk_inst(
-    .i_clk           d(sys_clk),
+    .i_clk           (sys_clk),
     .i_rst_n         (sys_rst_n),
 
     .o_clk_div_even  (sys_clk_div_even),
     .o_clk_div_odd   (sys_clk_div_odd),
     .o_clk_mul_dly_2x(sys_clk_mul_dly_2x)
 );
+
+initial begin
+    $dumpfile("wave.vcd");
+    $dumpvars(0, tb_clk);
+end
 
 endmodule
