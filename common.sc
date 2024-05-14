@@ -40,3 +40,5 @@ trait ChiselInterfaceModule extends HasChisel {
 }
 
 trait DWBBModule extends ChiselInterfaceModule
+
+trait SDRAMModule extends ChiselInterfaceModule
