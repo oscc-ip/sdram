@@ -44,3 +44,12 @@ trait DWBBModule extends ChiselInterfaceModule
 trait SDRAMModule extends ChiselInterfaceModule
 
 trait AXI4Module extends ChiselInterfaceModule
+
+trait SDRAMControllerModule extends HasChisel {
+  // Use for elaboration.
+  def mainargsIvy: Dep
+  def sdramModule: SDRAMModule
+  def axi4Module: AXI4Module
+  override def moduleDeps: Seq[JavaModule] = super.moduleDeps ++ Seq(sdramModule, axi4Module)
+  override def ivyDeps = T(super.ivyDeps() ++ Some(mainargsIvy))
+}

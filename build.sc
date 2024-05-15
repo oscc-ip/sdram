@@ -73,3 +73,15 @@ object axi4
   def chiselPluginIvy = Some(v.chiselPlugin)
   def mainargsIvy = v.mainargs
 }
+
+object sdramcontroller
+  extends common.SDRAMControllerModule
+    with ScalafmtModule {
+  def millSourcePath = os.pwd / "sdramcontroller"
+  def scalaVersion = T(v.scala)
+  def chiselIvy = Some(v.chisel)
+  def chiselPluginIvy = Some(v.chiselPlugin)
+  def sdramModule = sdram
+  def axi4Module = axi4
+  def mainargsIvy = v.mainargs
+}
