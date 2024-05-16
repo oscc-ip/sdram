@@ -55,12 +55,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM read enalbe */
     val ram_rd = WireInit(UInt(4.W))
     /** Whether SDRAM can accept data */
-    val ram_accept = WireInit(Bool())
+    val ram_accept = WireInit(UInt(1.W))
 
     /** When SDRAM mode is brust, let it perform read or write operation
       * continuously before request ends.
       */
-    when ((ram_wr =/= 0.U || ram_rd === 1.U) && ram_accept) {
+    when ((ram_wr =/= 0.U || ram_rd === 1.U) && ram_accept === 1.U) {
       when (req_len_q === 0.U) {
         req_rd_q := 0.U
         req_wr_q := 0.U
@@ -99,6 +99,25 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_axburst_q := axi.ar.bits.burst
       req_axlen_q   := axi.ar.bits.len
       req_prio_q    := !req_prio_q
+    }
+
+    /** SDRAM read request hold status */
+    val req_hold_rd_q = RegInit(UInt(1.W))
+    /** SDRAM write request hold status */
+    val req_hole_wr_q = RegInit(UInt(1.W))
+
+    /** When SDRAM read/write request is enable and cannot accept data, assert
+      * corresponding hold status, otherwise deassert.
+      */
+    when (ram_rd === 1.U && ram_accept === 0.U) {
+      req_hold_rd_q := 1.U
+    }.elsewhen (ram_accept === 1.U) {
+      req_hold_rd_q := 0.U
+    }
+    when (ram_wr =/= 0.U && ram_accept === 0.U) {
+      req_hole_wr_q := 1.U
+    }.elsewhen (ram_accept === 1.U) {
+      req_hole_wr_q := 1.U
     }
   }
 }
