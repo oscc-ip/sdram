@@ -31,20 +31,74 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
   // define registers
   withClockAndReset(clock, reset) {
+    /** SDRAM read/write request length */
     val req_len_q = RegInit(UInt(8.W))
+    /** SDRAM read/write addr */
     val req_addr_q = RegInit(UInt(32.W))
+    /** SDRAM write request enable */
     val req_wr_q = RegInit(UInt(1.W))
+    /** SDRAM read request enable */
     val req_rd_q = RegInit(UInt(1.W))
+    /** SDRAM read/write request id */
     val req_id_q = RegInit(UInt(4.W))
+    /** SDRAM read/write burst type */
     val req_axburst_q = RegInit(UInt(2.W))
+    /** SDRAM read/write burst length */
     val req_axlen_q = RegInit(UInt(8.W))
+    /** SDRAM read/write priority */
     val req_prio_q = RegInit(UInt(1.W))
 
-    when(req_len_q===0.U){
-      req_rd_q := 0.U
-      req_wr_q := 0.U
+    /** SDRAM write strb, it cotains both enable and mask functions. when it
+      * don't equal 4'b0000, it represent write is enable.
+      */
+    val ram_wr = WireInit(UInt(4.W))
+    /** SDRAM read enalbe */
+    val ram_rd = WireInit(UInt(4.W))
+    /** Whether SDRAM can accept data */
+    val ram_accept = WireInit(Bool())
+
+    /** When SDRAM mode is brust, let it perform read or write operation
+      * continuously before request ends.
+      */
+    when ((ram_wr =/= 0.U || ram_rd === 1.U) && ram_accept) {
+      when (req_len_q === 0.U) {
+        req_rd_q := 0.U
+        req_wr_q := 0.U
+      }
+      req_addr_q := calculateAddressNext(req_addr_q, req_axburst_q, req_axlen_q)
+      req_len_q := req_len_q - 1.U
     }
-    req_addr_q := calculateAddressNext(req_addr_q, req_axburst_q, req_axlen_q)
-    req_len_q := req_len_q - 1.U
+
+    /** When read/write handshake happens, update related request registers. */
+    when (axi.aw.valid && axi.aw.ready) {
+      when (axi.w.valid && axi.w.ready) {
+        req_wr_q      := !axi.w.bits.last
+        req_len_q     := axi.aw.bits.len - 1.U
+        req_id_q      := axi.aw.bits.id
+        req_axburst_q := axi.aw.bits.burst
+        req_axlen_q   := axi.aw.bits.len
+        req_addr_q    := calculateAddressNext(axi.aw.bits.addr,
+                                              axi.aw.bits.burst,
+                                              axi.aw.bits.len)
+      }.otherwise {
+        req_wr_q      := 1.U
+        req_len_q     := axi.aw.bits.len
+        req_id_q      := axi.aw.bits.id
+        req_axburst_q := axi.aw.bits.burst
+        req_axlen_q   := axi.aw.bits.len
+        req_addr_q    := axi.aw.bits.addr
+      }
+      req_prio_q := !req_prio_q
+    }.elsewhen(axi.ar.valid && axi.ar.ready) {
+      req_rd_q      := (axi.ar.bits.len =/= 0.U)
+      req_len_q     := axi.ar.bits.len - 1.U
+      req_addr_q    := calculateAddressNext(axi.ar.bits.addr,
+                                            axi.ar.bits.burst,
+                                            axi.ar.bits.len)
+      req_id_q      := axi.ar.bits.id
+      req_axburst_q := axi.ar.bits.burst
+      req_axlen_q   := axi.ar.bits.len
+      req_prio_q    := !req_prio_q
+    }
   }
 }
