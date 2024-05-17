@@ -35,9 +35,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val req_len_q = RegInit(UInt(8.W))
     /** SDRAM read/write addr */
     val req_addr_q = RegInit(UInt(32.W))
-    /** SDRAM write request enable */
+    /** SDRAM write request enable
+      * @todo change to Bool type.
+      */
     val req_wr_q = RegInit(UInt(1.W))
-    /** SDRAM read request enable */
+    /** SDRAM read request enable
+      * @todo change to [[Bool]] type.
+      */
     val req_rd_q = RegInit(UInt(1.W))
     /** SDRAM read/write request id */
     val req_id_q = RegInit(UInt(4.W))
@@ -45,7 +49,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val req_axburst_q = RegInit(UInt(2.W))
     /** SDRAM read/write burst length */
     val req_axlen_q = RegInit(UInt(8.W))
-    /** SDRAM read/write priority */
+    /** SDRAM read/write priority
+      * @todo change to [[Bool]] type. and add more documentation.
+      */
     val req_prio_q = RegInit(UInt(1.W))
 
     /** SDRAM write strb, it cotains both enable and mask functions. when it
@@ -54,7 +60,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val ram_wr = WireInit(UInt(4.W))
     /** SDRAM read enalbe */
     val ram_rd = WireInit(UInt(4.W))
-    /** Whether SDRAM can accept data */
+    /** Whether SDRAM can accept data
+      * @todo change to [[Bool]] type.
+      */
     val ram_accept = WireInit(UInt(1.W))
 
     /** When SDRAM mode is brust, let it perform read or write operation
@@ -101,9 +109,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_prio_q    := !req_prio_q
     }
 
-    /** SDRAM read request hold status */
+    /** SDRAM read request hold status.
+      * @todo change to Bool type.
+      */
     val req_hold_rd_q = RegInit(UInt(1.W))
-    /** SDRAM write request hold status */
+    /** SDRAM write request hold status
+      * @todo change to Bool type.
+      */
     val req_hole_wr_q = RegInit(UInt(1.W))
 
     /** When SDRAM read/write request is enable and cannot accept data, assert
