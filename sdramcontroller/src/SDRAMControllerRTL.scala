@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0
+// SPDX-FileCopyrightText: 2015-2019 Ultra-Embedded.com <admin@ultra-embedded.com>
+// SPDX-FileCopyrightText: 2024 Beijing Institute of Open Source Chip
 // TODO: change package to oscc
 package oscc.sdramcontroller
 
@@ -6,6 +9,9 @@ import chisel3.util.MuxLookup
 import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
 
 // This is what RTL designer need to implement, as well as necessary verification signal definitions.
+
+/** The RTL here is rewrite from [[https://github.com/ultraembedded/core_sdram_axi4]].
+  */
 trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
   // TODO: use Mux1H for selection
