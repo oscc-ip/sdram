@@ -37,7 +37,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     )
 
   /** First In First Out module */
-  class FIFO(WIDTH: Int, DEPTH: Int, ADDR_W: Int) extends Module {
+  class FIFO(WIDTH: Int = 8, DEPTH: Int = 4, ADDR_W: Int = 2) extends Module {
     val io = IO(new Bundle {
       /** FIFO clock */
       val clk_i = Input(Clock())
@@ -187,7 +187,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM write request hold status
       * @todo change to Bool type.
       */
-    val req_hole_wr_q = RegInit(UInt(1.W))
+    val req_hold_wr_q = RegInit(UInt(1.W))
 
     /** When SDRAM read/write request is enable and cannot accept data, assert
       * corresponding hold status, otherwise deassert.
@@ -198,9 +198,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_hold_rd_q := 0.U
     }
     when (ram_wr =/= 0.U && ram_accept === 0.U) {
-      req_hole_wr_q := 1.U
+      req_hold_wr_q := 1.U
     }.elsewhen (ram_accept === 1.U) {
-      req_hole_wr_q := 1.U
+      req_hold_wr_q := 1.U
     }
 
     // Request tracking
@@ -214,11 +214,91 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val req_out_w = WireInit(UInt(6.W))
     /**  */
     val resp_accept_w = WireInit(UInt(1.W))
+    /**  */
+    val req_fifo_accept_w = WireInit(UInt(1.W))
 
     when (axi.ar.valid && axi.ar.ready) {
-      req_in_r := Cat(1.U, (axi.ar.bits.len === 0.U), axi.ar.bits.id)
+      req_in_r := Cat(1.U(1.W), (axi.ar.bits.len === 0.U), axi.ar.bits.id)
+    }.elsewhen (axi.aw.valid && axi.aw.ready) {
+      req_in_r := Cat(0.U(1.W), (axi.aw.bits.len === 0.U), axi.aw.bits.id)
+    }.otherwise {
+      req_in_r := Cat(ram_rd, (req_len_q === 0.U), req_id_q)
     }
 
+    val u_requests = Module(new FIFO(6))
+    u_requests.io.clk_i      := clock
+    u_requests.io.rst_i      := reset
+    u_requests.io.data_in_i  := req_in_r
+    u_requests.io.push_i     := req_push_w
+    u_requests.io.accept_o   := req_fifo_accept_w
+    u_requests.io.pop_i      := resp_accept_w
+    u_requests.io.data_out_o := req_out_w
+    u_requests.io.valid_o    := req_out_valid_w
+
+    val resp_is_write_w = Mux(req_out_valid_w === 1.U, ~req_out_w(5), 0.U(1.W))
+    val resp_is_read_w  = Mux(req_out_valid_w === 1.U,  req_out_w(5), 0.U(1.W))
+    val resp_is_last_w  = req_out_w(4)
+    val resp_id_w       = req_out_w(3, 0)
+
     // Response buffering
+    val resp_valid_w = WireInit(UInt(1.W))
+
+    val u_response = Module(new FIFO(32))
+    u_response.io.clk_i      := clock
+    u_response.io.rst_i      := reset
+    u_response.io.data_in_i  := ram_read_data_i
+    u_response.io.push_i     := ram_ack_i
+    u_response.io.accept_o   := DontCare
+    u_response.io.pop_i      := resp_accept_w
+    u_response.io.data_out_o := axi.r.bits.data
+    u_response.io.valid_o    := resp_valid_w
+
+    // SDRAM Request
+    val write_prio_w = ((req_prio_q  & !req_hold_rd_q) | req_hold_wr_q)
+    val read_prio_w  = ((!req_prio_q & !req_hold_wr_q) | req_hold_rd_q)
+
+    val write_active_w = (axi.aw.valid || (req_wr_q === 1.U)) &&
+                         !req_rd_q &&
+                         (req_fifo_accept_w === 1.U) &&
+                         (write_prio_w === 1.U || req_wr_q === 1.U || !axi.ar.valid)
+    val read_active_w  = (axi.ar.valid || (req_rd_q === 1.U)) &&
+                         !req_wr_q &&
+                         (req_fifo_accept_w === 1.U) &&
+                         (read_prio_w === 1.U || req_rd_q === 1.U || !axi.aw.valid)
+
+    axi.aw.ready := write_active_w && !req_wr_q && (ram_accept_i === 1.U) &&
+                    req_fifo_accept_w
+    axi.w.ready  := write_active_w &&              (ram_accept_i === 1.U) &&
+                    req_fifo_accept_w;
+    axi.ar.ready := read_active_w  && !req_rd_q && (ram_accept_i === 1.U) &&
+                    req_fifo_accept_w
+
+    val addr_w = (Mux((req_wr_q === 1.U || req_rd_q === 1.U),
+                  req_addr_q,
+                  Mux(write_active_w, axi.aw.bits.addr, axi.ar.bits.addr)))
+
+    val wr_w = write_active_w && axi.w.valid
+    val rd_w = read_active_w
+
+    val ram_addr_o = addr_w
+    val ram_write_data_o = axi.w.bits.data
+    val ram_rd_o  = rd_w
+    val ram_wr_o  = Mux(wr_w, axi.w.bits.strb, 0.U((4.W)))
+    val ram_len_o = Mux(axi.aw.valid, axi.aw.bits.len,
+                    Mux(axi.ar.valid, axi.ar.bits.len, 0.U(8.W)))
+
+    // SDRAM Response
+    axi.b.valid     := resp_valid_w & resp_is_write_w.asUInt & resp_is_last_w
+    axi.b.bits.resp := 0.U(2.W)
+    axi.b.bits.id   := resp_id_w
+
+    axi.r.valid     := resp_valid_w & resp_is_read_w
+    axi.r.bits.resp := 0.U(2.W)
+    axi.r.bits.id   := resp_id_w
+    axi.r.bits.last := resp_is_last_w
+
+    resp_accept_w := (axi.r.valid & axi.r.ready) |
+                     (axi.b.valid & axi.b.ready) |
+                     (resp_valid_w & resp_is_write_w.asUInt & !resp_is_last_w)
   }
 }
