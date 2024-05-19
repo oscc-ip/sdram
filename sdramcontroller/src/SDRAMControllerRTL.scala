@@ -5,7 +5,7 @@
 package oscc.sdramcontroller
 
 import chisel3._
-import chisel3.util.MuxLookup
+import chisel3.util.{MuxLookup, Cat}
 import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
 
 // This is what RTL designer need to implement, as well as necessary verification signal definitions.
@@ -15,6 +15,7 @@ import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
 trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
   // TODO: use Mux1H for selection
+  /** Calculate the next address of AXI4 bus. */
   def calculateAddressNext(addr: UInt, axType: UInt, axLen: UInt): UInt =
     MuxLookup(axType, addr + 4.U)(
       Seq(
@@ -29,11 +30,75 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
               "0d15".U -> "0h3F".U
             )
           )
-          (addr & ~mask) | ((addr + 4.U) & mask)
+          (addr & (~mask).asUInt) | ((addr + 4.U) & mask)
         },
         INCR -> (addr + 4.U)
       )
     )
+
+  /** First In First Out module */
+  class FIFO(WIDTH: Int, DEPTH: Int, ADDR_W: Int) extends Module {
+    val io = IO(new Bundle {
+      /** FIFO clock */
+      val clk_i = Input(Clock())
+      /** FIFO reset */
+      val rst_i = Input(Bool())
+      /** FIFO data input */
+      val data_in_i = Input(UInt(WIDTH.W))
+      /** FIFO data push request */
+      val push_i = Input(UInt(1.W))
+      /** FIFO data pop request */
+      val pop_i  = Input(UInt(1.W))
+      /** FIFO data output */
+      val data_out_o = Output(UInt(WIDTH.W))
+      /** FIFO accept signal, if it's true, FIFO can input data */
+      val accept_o = Output(UInt(1.W))
+      /** FIFO valid signal, if it's true, FIFO can output data */
+      val valid_o = Output(UInt(1.W))
+    })
+
+    /** FIFO count */
+    val COUNT_W = ADDR_W + 1
+
+    withClockAndReset(io.clk_i, io.rst_i) {
+      /** FIFO buffer */
+      val ram = Vec(DEPTH, Reg(UInt(WIDTH.W)))
+      /** FIFO read pointer */
+      val rd_ptr = RegInit(UInt(ADDR_W.W))
+      /** FIFO write pointer */
+      val wr_ptr = RegInit(UInt(ADDR_W.W))
+      /** FIFO counter */
+      val count = RegInit(UInt(COUNT_W.W))
+
+      /** If read/write signals handshake, the corresponding pointer++, for
+       * write operation, save input data to RAM pointed to by write pointer.
+       */
+      when ((io.push_i & io.accept_o) === 1.U) {
+        ram(wr_ptr) := io.data_in_i
+        wr_ptr := wr_ptr + 1.U
+      }
+      when ((io.pop_i & io.valid_o) === 1.U) {
+        rd_ptr := rd_ptr + 1.U
+      }
+
+      /** Counter represent the status of read/write, if read signals handshake,
+       * counter++, if write signals handshake, counter--
+       */
+      when (((io.push_i & io.accept_o) &
+        (~(io.pop_i & io.valid_o)).asUInt) === 1.U) {
+        count := count + 1.U
+      }.elsewhen (((~(io.push_i & io.accept_o)).asUInt &
+        (io.pop_i & io.valid_o)) === 1.U) {
+        count := count - 1.U
+      }
+
+      /** Use counter to control whether to input or output data. Read operation
+       *  is combinatorial, data only depends on the read pointer . */
+      io.accept_o   := (count =/= UInt(DEPTH.W))
+      io.valid_o    := (count =/= 0.U)
+      io.data_out_o := ram(rd_ptr)
+    }
+  }
 
   // define registers
   withClockAndReset(clock, reset) {
@@ -137,5 +202,23 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     }.elsewhen (ram_accept === 1.U) {
       req_hole_wr_q := 1.U
     }
+
+    // Request tracking
+    /**  */
+    val req_push_w = ((ram_rd === 1.U) || (ram_wr =/= 0.U)) && (ram_accept === 1.U)
+    /**  */
+    val req_in_r = RegInit(UInt(6.W))
+    /**  */
+    val req_out_valid_w = WireInit(UInt(1.W))
+    /**  */
+    val req_out_w = WireInit(UInt(6.W))
+    /**  */
+    val resp_accept_w = WireInit(UInt(1.W))
+
+    when (axi.ar.valid && axi.ar.ready) {
+      req_in_r := Cat(1.U, (axi.ar.bits.len === 0.U), axi.ar.bits.id)
+    }
+
+    // Response buffering
   }
 }
