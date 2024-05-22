@@ -56,7 +56,7 @@ object sdramcontroller
   def millSourcePath = os.pwd / "sdramcontroller"
   def scalaVersion = T(v.scala)
   def chiselModule = Some(chisel)
-  def chiselPluginModule = Some(chisel.pluginModule)
+  def chiselPluginJar = Some(chisel.pluginModule.jar())
   def sdramModule = sdram
   def axi4Module = axi4
   def mainargsIvy = v.mainargs
