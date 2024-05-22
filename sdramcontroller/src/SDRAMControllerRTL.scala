@@ -20,13 +20,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       Seq(
         FIXED -> 0.U,
         WARP -> {
-          val mask = MuxLookup(axLen, "0xh3f".U(32.W)) (
+          val mask = MuxLookup(axLen, "h3f".U(32.W)) (
             Seq(
-              "0d0".U  -> "0h03".U,
-              "0d1".U  -> "0h07".U,
-              "0d3".U  -> "0h0F".U,
-              "0d7".U  -> "0h1F".U,
-              "0d15".U -> "0h3F".U
+              "d0".U  -> "h03".U,
+              "d1".U  -> "h07".U,
+              "d3".U  -> "h0F".U,
+              "d7".U  -> "h1F".U,
+              "d15".U -> "h3F".U
             )
           )
           (addr & (~mask).asUInt) | ((addr + 4.U) & mask)
@@ -61,13 +61,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     withClockAndReset(io.clk_i, io.rst_i) {
       /** FIFO buffer */
-      val ram = Vec(DEPTH, Reg(UInt(WIDTH.W)))
+      val ram = RegInit(VecInit.fill(DEPTH)(0.U(WIDTH.W)))
       /** FIFO read pointer */
-      val rd_ptr = RegInit(UInt(ADDR_W.W))
+      val rd_ptr = RegInit(0.U(ADDR_W.W))
       /** FIFO write pointer */
-      val wr_ptr = RegInit(UInt(ADDR_W.W))
+      val wr_ptr = RegInit(0.U(ADDR_W.W))
       /** FIFO counter */
-      val count = RegInit(UInt(COUNT_W.W))
+      val count = RegInit(0.U(COUNT_W.W))
 
       /** If read/write signals handshake, the corresponding pointer++, for
        * write operation, save input data to RAM pointed to by write pointer.
@@ -93,7 +93,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
       /** Use counter to control whether to input or output data. Read operation
        *  is combinatorial, data only depends on the read pointer . */
-      io.accept_o   := (count =/= UInt(DEPTH.W))
+      io.accept_o   := (count =/= DEPTH.U)
       io.valid_o    := (count =/= 0.U)
       io.data_out_o := ram(rd_ptr)
     }
@@ -104,38 +104,38 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // SDRAM Request and Buffer
     // ************************************************************************
     /** SDRAM read/write request length */
-    val req_len_q = RegInit(UInt(8.W))
+    val req_len_q = RegInit(0.U(8.W))
     /** SDRAM read/write addr */
-    val req_addr_q = RegInit(UInt(32.W))
+    val req_addr_q = RegInit(0.U(32.W))
     /** SDRAM write request enable
       * @todo change to Bool type.
       */
-    val req_wr_q = RegInit(UInt(1.W))
+    val req_wr_q = RegInit(0.U(1.W))
     /** SDRAM read request enable
       * @todo change to [[Bool]] type.
       */
-    val req_rd_q = RegInit(UInt(1.W))
+    val req_rd_q = RegInit(0.U(1.W))
     /** SDRAM read/write request id */
-    val req_id_q = RegInit(UInt(4.W))
+    val req_id_q = RegInit(0.U(4.W))
     /** SDRAM read/write burst type */
-    val req_axburst_q = RegInit(UInt(2.W))
+    val req_axburst_q = RegInit(0.U(2.W))
     /** SDRAM read/write burst length */
-    val req_axlen_q = RegInit(UInt(8.W))
+    val req_axlen_q = RegInit(0.U(8.W))
     /** SDRAM read/write priority
       * @todo change to [[Bool]] type. and add more documentation.
       */
-    val req_prio_q = RegInit(UInt(1.W))
+    val req_prio_q = RegInit(0.U(1.W))
 
     /** SDRAM write strb, it cotains both enable and mask functions. when it
      * don't equal 4'b0000, it represent write is enable.
      */
-    val ram_wr = WireInit(UInt(4.W))
+    val ram_wr = WireInit(0.U(4.W))
     /** SDRAM read enalbe */
-    val ram_rd = WireInit(UInt(4.W))
+    val ram_rd = WireInit(0.U(4.W))
     /** Whether SDRAM can accept data
       * @todo change to [[Bool]] type.
       */
-    val ram_accept = WireInit(UInt(1.W))
+    val ram_accept = WireInit(0.U(1.W))
 
     /** When SDRAM mode is brust, let it perform read or write operation
      * continuously before request ends.
@@ -184,11 +184,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM read request hold status.
       * @todo change to Bool type.
       */
-    val req_hold_rd_q = RegInit(UInt(1.W))
+    val req_hold_rd_q = RegInit(0.U(1.W))
     /** SDRAM write request hold status
       * @todo change to Bool type.
       */
-    val req_hold_wr_q = RegInit(UInt(1.W))
+    val req_hold_wr_q = RegInit(0.U(1.W))
 
     /** When SDRAM read/write request is enable and cannot accept data, assert
      * corresponding hold status, otherwise deassert.
@@ -210,21 +210,21 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /**  SDRAM request push */
     val req_push_w = ((ram_rd === 1.U) || (ram_wr =/= 0.U)) && (ram_accept === 1.U)
     /** SDRAM request input */
-    val req_in_r = RegInit(UInt(6.W))
+    val req_in_r = RegInit(0.U(6.W))
     /** SDRAM request output valid */
-    val req_out_valid_w = WireInit(UInt(1.W))
+    val req_out_valid_w = WireInit(0.U(1.W))
     /** SDRAM request out */
-    val req_out_w = WireInit(UInt(6.W))
+    val req_out_w = WireInit(0.U(6.W))
     /** SDRAM response accept */
-    val resp_accept_w = WireInit(UInt(1.W))
+    val resp_accept_w = WireInit(0.U(1.W))
     /** SDRAM request FIFO accept */
-    val req_fifo_accept_w = WireInit(UInt(1.W))
+    val req_fifo_accept_w = WireInit(0.U(1.W))
     /** SDRAM read data */
-    val ram_read_data_w = WireInit(UInt(32.W))
+    val ram_read_data_w = WireInit(0.U(32.W))
     /** SDRAM ack enable */
-    val ram_ack_w = WireInit(UInt(1.W))
+    val ram_ack_w = WireInit(0.U(1.W))
     /** SDRAM accept data enable */
-    val ram_accept_w = WireInit(UInt(1.W))
+    val ram_accept_w = WireInit(0.U(1.W))
 
     when (axi.ar.valid && axi.ar.ready) {
       req_in_r := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
@@ -239,10 +239,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_requests.io.rst_i := reset
     u_requests.io.data_in_i := req_in_r
     u_requests.io.push_i := req_push_w
-    u_requests.io.accept_o := req_fifo_accept_w
+    req_fifo_accept_w := u_requests.io.accept_o
     u_requests.io.pop_i := resp_accept_w
-    u_requests.io.data_out_o := req_out_w
-    u_requests.io.valid_o := req_out_valid_w
+    req_out_w := u_requests.io.data_out_o
+    req_out_valid_w := u_requests.io.valid_o
 
     val resp_is_write_w = Mux(req_out_valid_w === 1.U, ~req_out_w(5), 0.U(1.W))
     val resp_is_read_w = Mux(req_out_valid_w === 1.U, req_out_w(5), 0.U(1.W))
@@ -252,7 +252,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // Response buffering
     // ------------------------------------------------------------------------
-    val resp_valid_w = WireInit(UInt(1.W))
+    val resp_valid_w = WireInit(0.U(1.W))
 
     val u_response = Module(new FIFO(32))
     u_response.io.clk_i := clock
@@ -261,8 +261,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_response.io.push_i := ram_ack_w
     u_response.io.accept_o := DontCare
     u_response.io.pop_i := resp_accept_w
-    u_response.io.data_out_o := axi.r.bits.data
-    u_response.io.valid_o := resp_valid_w
+    axi.r.bits.data := u_response.io.data_out_o
+    resp_valid_w := u_response.io.valid_o
 
     // ------------------------------------------------------------------------
     // SDRAM Request
@@ -304,11 +304,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     axi.b.valid := resp_valid_w & resp_is_write_w.asUInt & resp_is_last_w
     axi.b.bits.resp := 0.U(2.W)
     axi.b.bits.id := resp_id_w
+    axi.b.bits.user := 0.U
 
     axi.r.valid := resp_valid_w & resp_is_read_w
     axi.r.bits.resp := 0.U(2.W)
     axi.r.bits.id := resp_id_w
     axi.r.bits.last := resp_is_last_w
+    axi.r.bits.user := 0.U
 
     resp_accept_w := (axi.r.valid & axi.r.ready) |
       (axi.b.valid & axi.b.ready) |
@@ -385,29 +387,29 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // Registers / Wires
     // ------------------------------------------------------------------------
-    val command_q = RegInit(UInt(CMD_W.W), CMD_NOP)
-    val addr_q = RegInit(UInt(SDRAM_ROW_W.W), 0.U)
-    val data_q = RegInit(UInt(SDRAM_DATA_W.W), 0.U)
-    val data_rd_en_q = RegInit(UInt(1.W), 1.U)
-    val dqm_q = RegInit(UInt(SDRAM_DQM_W.W), 0.U)
-    val cke_q = RegInit(UInt(1.W), 0.U)
-    val bank_q = RegInit(UInt(SDRAM_BANK_W.W), 0.U)
+    val command_q = RegInit(CMD_NOP)
+    val addr_q = RegInit(0.U(SDRAM_ROW_W.W))
+    val data_q = RegInit(0.U(SDRAM_DATA_W.W))
+    val data_rd_en_q = RegInit(1.U(1.W))
+    val dqm_q = RegInit(0.U(SDRAM_DQM_W.W))
+    val cke_q = RegInit(0.U(1.W))
+    val bank_q = RegInit(0.U(SDRAM_BANK_W.W))
 
     // Buffer half word during read and write commands
-    val data_buffer_q = RegInit(UInt(SDRAM_DATA_W.W), 0.U)
-    val dqm_buffer_q = RegInit(UInt(SDRAM_DQM_W.W), 0.U)
-    val sdram_data_in_w = WireInit(UInt(SDRAM_DATA_W.W), 0.U)
+    val data_buffer_q = RegInit(0.U(SDRAM_DATA_W.W))
+    val dqm_buffer_q = RegInit(0.U(SDRAM_DQM_W.W))
+    val sdram_data_in_w = WireInit(0.U(SDRAM_DATA_W.W))
 
-    val refresh_q = RegInit(UInt(1.W), 0.U)
+    val refresh_q = RegInit(0.U(1.W))
 
-    val row_open_q = RegInit(UInt(SDRAM_BANKS.W), 0.U)
-    val active_row_q = VecInit(Seq.fill(SDRAM_BANKS)(0.U(SDRAM_BANK_W.W)))
+    val row_open_q = RegInit(0.U(SDRAM_BANKS.W))
+    val active_row_q = VecInit.fill(SDRAM_BANKS)(0.U(SDRAM_BANK_W.W))
 
-    val state_q = RegInit(UInt(STATE_W.W))
-    val next_state_r = RegInit(UInt(STATE_W.W))
-    val target_state_r = RegInit(UInt(STATE_W.W))
-    val target_state_q = RegInit(UInt(STATE_W.W), STATE_IDLE)
-    val delay_state_q = RegInit(UInt(STATE_W.W), STATE_IDLE)
+    val state_q = RegInit(0.U(STATE_W.W))
+    val next_state_r = RegInit(0.U(STATE_W.W))
+    val target_state_r = RegInit(0.U(STATE_W.W))
+    val target_state_q = RegInit(STATE_IDLE)
+    val delay_state_q = RegInit(STATE_IDLE)
 
     // Address bits
     val addr_col_w  = Cat(Fill(SDRAM_ROW_W - SDRAM_COL_W, 0.U(1.W)),
@@ -519,8 +521,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     val DELAY_W = 4
 
-    val delay_q = RegInit(UInt(DELAY_W.W))
-    val delay_r = RegInit(UInt(DELAY_W.W))
+    val delay_q = RegInit(0.U(DELAY_W.W))
+    val delay_r = RegInit(0.U(DELAY_W.W))
 
     delay_r :=  0.U(DELAY_W.W)
 
@@ -563,7 +565,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     val REFRESH_CNT_W = 17
 
-    val refresh_timer_q = RegInit(UInt(REFRESH_CNT_W.W), (SDRAM_START_DELAY + 100).asUInt)
+    // Bug Here
+    val refresh_timer_q = RegInit(0.U(REFRESH_CNT_W.W))
     when (refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
       refresh_timer_q := SDRAM_REFRESH_CYCLES.asUInt
     }.otherwise {
@@ -579,10 +582,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // Input sampling
     // ------------------------------------------------------------------------
-    val sample_data0_q = RegInit(UInt(SDRAM_DATA_W.W))
+    val sample_data0_q = RegInit(0.U(SDRAM_DATA_W.W))
     sample_data0_q := sdram_data_in_w
 
-    val sample_data_q = RegInit(UInt(SDRAM_DATA_W.W))
+    val sample_data_q = RegInit(0.U(SDRAM_DATA_W.W))
     sample_data_q := sample_data0_q
 
     // ------------------------------------------------------------------------
@@ -599,7 +602,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           cke_q := 1.U(1.W)
         }.elsewhen (refresh_timer_q === 40.U) {
           command_q := CMD_PRECHARGE
-          addr_q(ALL_BANKS) := 1.U(1.W)
+          // TODO: fix me: addr_q(ALL_BANKS) := 1.U(1.W)
         }.elsewhen (refresh_timer_q === 20.U || refresh_timer_q === 30.U) {
           command_q := CMD_REFRESH
         }.elsewhen (refresh_timer_q === 10.U) {
@@ -617,18 +620,18 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         bank_q := addr_bank_w
 
         active_row_q(addr_bank_w) := addr_row_w
-        row_open_q(addr_bank_w) := 1.U(1.W)
+        // TODO: fix me: row_open_q(addr_bank_w) := 1.U(1.W)
       }
       is (STATE_PRECHARGE) {
         when (target_state_r === STATE_REFRESH) {
           command_q := CMD_PRECHARGE
-          addr_q(ALL_BANKS) := 1.U(1.W)
+          // TODO: fix me: addr_q(ALL_BANKS) := 1.U(1.W)
           row_open_q := 0.U(SDRAM_BANKS.W)
         }.otherwise {
           command_q := CMD_PRECHARGE
-          addr_q(ALL_BANKS) := 0.U(1.W)
+          // TODO: fix me: addr_q(ALL_BANKS) := 0.U(1.W)
           bank_q := addr_bank_w
-          row_open_q(addr_bank_w) := 0.U(1.W)
+          // TODO: fix me: row_open_q(addr_bank_w) := 0.U(1.W)
         }
       }
       is (STATE_REFRESH) {
@@ -641,7 +644,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         addr_q := addr_col_w
         bank_q := addr_bank_w
 
-        addr_q(AUTO_PRECHARGE) := 0.U(1.W)
+        // TODO: fix me: addr_q(AUTO_PRECHARGE) := 0.U(1.W)
         dqm_q := 0.U(SDRAM_DQM_W.W)
       }
       is (STATE_WRITE0) {
@@ -650,7 +653,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         bank_q := addr_bank_w
         data_q := ram_write_data_w(15, 0)
 
-        addr_q(AUTO_PRECHARGE) := 0.U(1.W)
+        // TODO: fix me: addr_q(AUTO_PRECHARGE) := 0.U(1.W)
 
         dqm_q := ~ram_wr_w(1, 0)
         dqm_buffer_q := ~ram_wr_w(3, 2)
@@ -661,7 +664,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         command_q := CMD_NOP
         data_q := data_buffer_q
 
-        addr_q(AUTO_PRECHARGE) := 0.U(1.W)
+        // TODO: fix me: addr_q(AUTO_PRECHARGE) := 0.U(1.W)
 
         dqm_q := dqm_buffer_q
       }
@@ -670,7 +673,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // Record read events
     // ------------------------------------------------------------------------
-    val rd_q = RegInit(UInt((SDRAM_READ_LATENCY + 2).W), 0.U)
+    val rd_q = RegInit(0.U((SDRAM_READ_LATENCY + 2).W))
     rd_q := Cat(rd_q(SDRAM_READ_LATENCY, 0), state_q === STATE_READ)
 
     // ------------------------------------------------------------------------
@@ -687,7 +690,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // ACK
     // ------------------------------------------------------------------------
-    val ack_q = RegInit(UInt(1.W), 0.U)
+    val ack_q = RegInit(0.U(1.W))
     when (state_q === STATE_WRITE1) {
       ack_q := 1.U(1.W)
     }.elsewhen (rd_q(SDRAM_READ_LATENCY + 1)) {
@@ -702,7 +705,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // SDRAM I/O
     // ------------------------------------------------------------------------
-    sdram.ck  := ~clock.asBool
+    // TODO: this is forbidden in RTL, use CTS blackbox instead.
+    sdram.ck.foreach(_ := (~clock.asBool).asBool.asClock)
     sdram.cke := cke_q
     sdram.cs  := command_q(3)
     sdram.ras := command_q(2)
