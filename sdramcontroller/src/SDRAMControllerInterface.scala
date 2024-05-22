@@ -46,7 +46,7 @@ class SDRAMControllerInterface(val parameter: SDRAMControllerParameter) extends 
     )
   )
   def clock: Clock = elements("clock").asInstanceOf[Clock]
-  def reset: Bool = elements("clock").asInstanceOf[Bool]
+  def reset: Bool = elements("reset").asInstanceOf[Bool]
   def axi: AXI4RWIrrevocable = elements("AXI").asInstanceOf[AXI4RWIrrevocableVerilog].viewAs[AXI4RWIrrevocable]
   def sdram: SDRAMChiselType = elements("SDRAM").asInstanceOf[SDRAMChiselType]
 }
