@@ -60,6 +60,8 @@ trait Elaborator {
     val annoJsonFile = os.pwd / s"${fir.main}.anno.json"
     val firFile = os.pwd / s"${fir.main}.fir"
     val svFile = os.pwd / s"${fir.main}.sv"
+    os.remove(firFile)
+    os.remove(annoJsonFile)
     os.write(firFile, fir.serialize)
     os.write(
       annoJsonFile,
