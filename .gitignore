@@ -1,3 +1,6 @@
 /out/
 /.idea/
 /.bsp/
+/dependencies/
+/*.json
+/*.fir
