@@ -6,9 +6,10 @@
 ```bash
 nix develop .#oscc
 ```
-3. Setup Mill BSP
+3. Setup Mill BSP or Idea
 ```bash
 mill mill.bsp.BSP/install
+mill mill.idea.GenIdea/idea
 ```
 4. Open your favorite IDE
 
