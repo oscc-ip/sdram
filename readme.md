@@ -6,7 +6,11 @@
 ```bash
 nix develop .#oscc
 ```
-3. Open your favorite IDE
+3. Setup Mill BSP
+```bash
+mill mill.bsp.BSP/install
+```
+4. Open your favorite IDE
 
 # Elaborate Verilog
 
