@@ -316,148 +316,301 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
 
 
-    // ************************************************************************
+
+
+    // ========================================================================
     // SDRAM Controller
-    // ************************************************************************
+    // ========================================================================
     // ------------------------------------------------------------------------
-    // Key Params
+    // SDRAM Parameters
     // ------------------------------------------------------------------------
+    /** SDRAM External Parameters (User can customize them) */
     val SDRAM_MHZ              = 50
     val SDRAM_ADDR_W           = 24
     val SDRAM_COL_W            = 9
     val SDRAM_READ_LATENCY     = 2
 
-    // ------------------------------------------------------------------------
-    // Defines / Local params
-    // ------------------------------------------------------------------------
-    val SDRAM_BANK_W          = 2
-    val SDRAM_DQM_W           = 2
-    val SDRAM_BANKS           = 1 << SDRAM_BANK_W
-    val SDRAM_ROW_W           = SDRAM_ADDR_W - SDRAM_COL_W - SDRAM_BANK_W
-    val SDRAM_REFRESH_CNT     = 1 << SDRAM_ROW_W
-    val SDRAM_START_DELAY     = 100000 / (1000 / SDRAM_MHZ) // 100uS
-    val SDRAM_REFRESH_CYCLES  = (64000 * SDRAM_MHZ) / SDRAM_REFRESH_CNT - 1
+    /** SDRAM Internal Parameters */
+    /** SDRAM Data Width */
+    val SDRAM_DATA_W = 16
+    /** SDRAM Bank Width */
+    val SDRAM_BANK_W = 2
+    /** SDRAM Bank Number */
+    val SDRAM_BANK_N = 1 << SDRAM_BANK_W
+    /** SDRAM DQM Width */
+    val SDRAM_DQM_W = 2
+    /** SDRAM Row Width */
+    val SDRAM_ROW_W = SDRAM_ADDR_W - SDRAM_COL_W - SDRAM_BANK_W
+    /** SDRAM Refresh Counter */
+    val SDRAM_REFRESH_CNT = 1 << SDRAM_ROW_W
+    /** SDRAM INIT time (100us) */
+    val SDRAM_TIME_INIT = 100000 / (1000 / SDRAM_MHZ)
+    
+    /** SDRAM Timing Parameters */
+    /** Time per cycle */
+    val SDRAM_CYCLE_NS = 1000 / SDRAM_MHZ
+    /** Cycles between ACTIVE and READ/WRITE */
+    val SDRAM_CYCLES_TRCD = (20 + (SDRAM_CYCLE_NS - 1)) / SDRAM_CYCLE_NS
+    /** Cycles between PRECHARGE and ACTIVE */
+    val SDRAM_CYCLES_TRP = (20 + (SDRAM_CYCLE_NS - 1)) / SDRAM_CYCLE_NS
+    /** Cycles between REFRESH and OTHER COMMAND */
+    val SDRAM_CYCLES_TRFC = (60 + (SDRAM_CYCLE_NS - 1)) / SDRAM_CYCLE_NS
+    /** Cycles of REFRESH */
+    val SDRAM_CYCLES_REFRESH  = (64000 * SDRAM_MHZ) / SDRAM_REFRESH_CNT - 1
 
-    val CMD_W             = 4
-    val CMD_NOP           = "b0111".U(4.W)
-    val CMD_ACTIVE        = "b0011".U(4.W)
-    val CMD_READ          = "b0101".U(4.W)
-    val CMD_WRITE         = "b0100".U(4.W)
-    val CMD_PRECHARGE     = "b0010".U(4.W)
-    val CMD_REFRESH       = "b0001".U(4.W)
-    val CMD_LOAD_MODE     = "b0000".U(4.W)
+    /** The NO OPERATION (NOP) command is used to perform a NOP to the selected
+      * device (CS# is LOW). This prevents unwanted commands from being
+      * registered during idle or wait states. Operations already in progress
+      * are not affected.
+      */
+    val CMD_NOP = "b0111".U(4.W)
+    /** The mode registers are loaded via inputs A[n : 0] (where An is the most
+      * significant address term), BA0, and BA1(see "Mode Register"). The LOAD
+      * MODE REGISTER command can only be issued when all banks are idle and a
+      * subsequent executable command cannot be issued until tMRD is met.
+      */
+    val CMD_LMR = "b0000".U(4.W)
+    /** The ACTIVE command is used to activate a row in a particular bank for a
+      * subsequent access. The value on the BA0, BA1 inputs selects the bank,
+      * and the address provided selects the row. This row remains active for
+      * accesses until a PRECHARGE command is issued to that bank. A PRECHARGE
+      * command must be issued before opening a different row in the same bank.
+      */
+    val CMD_ACTIVE = "b0011".U(4.W)
+    /** The READ command is used to initiate a burst read access to an active
+      * row. The values on the BA0 and BA1 inputs select the bank; the address
+      * provided selects the starting column location. The value on input A10
+      * determines whether auto precharge is used. If auto precharge is
+      * selected, the row being accessed is precharged at the end of the READ
+      * burst; if auto precharge is not selected, the row remains open for
+      * subsequent accesses. Read data appears on the DQ subject to the logic
+      * level on the DQM inputs two clocks earlier. If a given DQM signal was
+      * registered HIGH, the corresponding DQ will be High-Z two clocks later;
+      * if the DQM signal was registered LOW, the DQ will provide valid data.
+      */
+    val CMD_READ = "b0101".U(4.W)
+    /** The WRITE command is used to initiate a burst write access to an active
+      * row. The values on the BA0 and BA1 inputs select the bank; the address
+      * provided selects the starting column ocation. The value on input A10
+      * determines whether auto precharge is used. If auto precharge is
+      * selected, the row being accessed is precharged at the end of the write
+      * burst; if auto precharge is not selected, the row remains open for
+      * subsequent accesses. Input data appearing on the DQ is written to the
+      * memory array, subject to the DQM input logic level appearing coincident
+      * with the data. If a given DQM signal is registered LOW, the
+      * corresponding data is written to memory; if the DQM signal is
+      * registered HIGH, the corresponding data inputs are ignored and a WRITE
+      * is not executed to that byte/column location.
+      */
+    val CMD_WRITE = "b0100".U(4.W)
+    /** The PRECHARGE command is used to deactivate the open row in a
+      * particular bank or the open row in all banks. The bank(s) will be
+      * available for a subsequent row access a specified time (tRP) after the
+      * PRECHARGE command is issued. Input A10 determines whether one or all
+      * banks are to be precharged, and in the case where only one bank is
+      * precharged, inputs BA0 and BA1 select the bank. Otherwise BA0 and BA1
+      * are treated as "Don’t Care." After a bank has been precharged, it is in
+      * the idle state and must be activated prior to any READ or WRITE
+      * commands are issued to that bank.
+      */
+    val CMD_PRECHARGE = "b0010".U(4.W)
+    /** AUTO REFRESH is used during normal operation of the SDRAM and is
+      * analogous to CAS#-BEFORE-RAS# (CBR) refresh in conventional DRAMs. This
+      * command is nonpersistent, so it must be issued each time a refresh is
+      * required. All active banks must be precharged prior to issuing an AUTO
+      * REFRESH command. The AUTO REFRESH command should not be issued until
+      * the minimum tRP has been met after the PRECHARGE command, as shown in
+      * Bank/Row Activation.
+      */
+    val CMD_REFRESH = "b0001".U(4.W)
 
-    // Mode: Burst Length = 4 bytes, CAS=2
-    val MODE_REG          = Cat("b000".U(3.W), 0.U(1.W), 0.U(2.W),
-      "b010".U(3.W), 0.U(1.W),
-      "b001".U(3.W))
+    /** Mode Register Definition (A[12 : 00])
+      * A[12 : 10]: Reserved.
+      * A[09]:      Write Burst Mode. When A[09] = 0, the burst length
+      *             programmed via A[02 : 00] applies to both READ and WRITE
+      *             bursts; when A[09] = 1, the programmed burst length applies
+      *             to READ bursts, but write accesses are single-location
+      *             (nonburst) accesses.
+      *             0 -> Programmed Burst Length
+      *             1 - > Single Location Access
+      * A[08 : 07]: Operating Mode. The normal operating mode is selected by
+      *             setting A[07] and A[08] to zero; the other combinations
+      *             of values for A[07] and A[08] are reserved for future use.
+      *             Reserved states should not be used because unknown
+      *             operation or incompatibility with future versions may result.
+      *             00 -> Standard Operation
+      *             xx -> All other states reserved
+      * A[06 : 04]: CAS Latency. The CAS latency (CL) is the delay, in clock
+      *             cycles, between the registration of a READ command and the
+      *             availability of the output data. The latency can be set to
+      *             two or three clocks.
+      *             001 -> 1
+      *             010 -> 2
+      *             011 -> 3
+      * A[03]:      Burst Type. Accesses within a given burst can be programmed
+      *             to be either sequential or interleaved; this is referred to
+      *             as the burst type and is selected via bit A[03].
+      *             0 -> Sequential
+      *             1 -> Interleaved
+      * A[02 : 00]: Burst Length. Read and write accesses to the device are
+      *             burst oriented, and the burst length (BL) is programmable.
+      *             The burst length determines the maximum number of column
+      *             locations that can be accessed for a given READ or WRITE
+      *             command. Burst lengths of 1, 2, 4, 8, or continuous
+      *             locations are available for both the sequential and the
+      *             interleaved burst types, and a continuous page burst is
+      *             available for the sequential type. The continuous page
+      *             burst is used in conjunction with the BURST TERMINATE
+      *             command to generate arbitrary burst lengths.
+      *             000 -> 1
+      *             001 -> 2
+      *             010 -> 4
+      *             011 -> 8
+      *             111 -> Full Page(Only A[03] = 0, Burst Type is Sequential]
+      * -----------------------------------------------------------------------
+      * SDRAM Mode: CAS Latency = 2, Burst Type = Sequential, Burst Length = 2
+      */
+    val MODE_REGISTER = Cat(
+      "b000".U(3.W), 0.U(1.W), 0.U(2.W), "b010".U(3.W), 0.U(1.W), "b001".U(3.W))
 
-    // SM states
+    /** SDRAM State Machines */
     val STATE_W           = 4
-    val STATE_INIT        = 0.U(4.W)
-    val STATE_DELAY       = 1.U(4.W)
-    val STATE_IDLE        = 2.U(4.W)
-    val STATE_ACTIVATE    = 3.U(4.W)
-    val STATE_READ        = 4.U(4.W)
-    val STATE_READ_WAIT   = 5.U(4.W)
-    val STATE_WRITE0      = 6.U(4.W)
-    val STATE_WRITE1      = 7.U(4.W)
-    val STATE_PRECHARGE   = 8.U(4.W)
-    val STATE_REFRESH     = 9.U(4.W)
+    val STATE_INIT        = 0.U(STATE_W.W)
+    val STATE_DELAY       = 1.U(STATE_W.W)
+    val STATE_IDLE        = 2.U(STATE_W.W)
+    val STATE_ACTIVATE    = 3.U(STATE_W.W)
+    val STATE_READ        = 4.U(STATE_W.W)
+    val STATE_READ_WAIT   = 5.U(STATE_W.W)
+    val STATE_WRITE0      = 6.U(STATE_W.W)
+    val STATE_WRITE1      = 7.U(STATE_W.W)
+    val STATE_PRECHARGE   = 8.U(STATE_W.W)
+    val STATE_REFRESH     = 9.U(STATE_W.W)
 
-    val AUTO_PRECHARGE    = 10
-    val ALL_BANKS         = 10
+    /** A10 is special bit in A[12 : 00], when current state is PRECHARGE, if
+      * A10 is 1, it represent all 4 banks will be precharged; When current
+      * state is READ or WRITE, if A10 is 1, a precharge of the bank/row that
+      * is addressed with the READ or WRITE command is automatically performed
+      * upon completion of the READ or WRITE burst, except in the continuous
+      * page burst mode where auto precharge does not apply. */
+    val BIT_AUTO_PRECHARGE = 10
+    val BIT_ALL_BANKS      = 10
 
-    val SDRAM_DATA_W      = 16
-
-    val CYCLE_TIME_NS     = 1000 / SDRAM_MHZ
-
-    // SDRAM timing
-    val SDRAM_TRCD_CYCLES = (20 + (CYCLE_TIME_NS - 1)) / CYCLE_TIME_NS
-    val SDRAM_TRP_CYCLES  = (20 + (CYCLE_TIME_NS - 1)) / CYCLE_TIME_NS
-    val SDRAM_TRFC_CYCLES = (60 + (CYCLE_TIME_NS - 1)) / CYCLE_TIME_NS
 
     // ------------------------------------------------------------------------
-    // External Interface
+    // SDRAM Wires and Registers
     // ------------------------------------------------------------------------
+    /** SDRAM Read or Write request */
     val ram_req_w = (ram_wr_w =/= 0.U) || ram_rd_w
-
-    // ------------------------------------------------------------------------
-    // Registers / Wires
-    // ------------------------------------------------------------------------
+    /** SDRAM Command */
     val command_q = RegInit(CMD_NOP)
+    /** SDRAM Row Address */
     val addr_q = RegInit(0.U(SDRAM_ROW_W.W))
+    /** SDRAM Data */
     val data_q = RegInit(0.U(SDRAM_DATA_W.W))
+    /** SDRAM Read Enable */
     val data_rd_en_q = RegInit(true.B)
+    /** SDRAM DQM */
     val dqm_q = RegInit(0.U(SDRAM_DQM_W.W))
+    /** SDRAM Clock Enable */
     val cke_q = RegInit(false.B)
+    /** SDRAM Bank Address */
     val bank_q = RegInit(0.U(SDRAM_BANK_W.W))
 
-    // Buffer half word during read and write commands
+    /** During READ and WRITE command, use buffer to receive stable data. */
+    /** SDRAM Data Buffer */
     val data_buffer_q = RegInit(0.U(SDRAM_DATA_W.W))
+    /** SDRAM DQM Buffer */
     val dqm_buffer_q = RegInit(0.U(SDRAM_DQM_W.W))
+    /** SDRAM Input Data */
     val sdram_data_in_w = WireInit(0.U(SDRAM_DATA_W.W))
 
+    /** SDRAM Refresh Enable */
     val refresh_q = RegInit(false.B)
 
-    val row_open_q = RegInit(0.U(SDRAM_BANKS.W))
-    val active_row_q = VecInit.fill(SDRAM_BANKS)(0.U(SDRAM_BANK_W.W))
+    /** SDRAM Open Row Enable (Every bit represents different bank) */
+    val row_open_q = RegInit(0.U(SDRAM_BANK_N.W))
+    /** SDRAM Active Row Enable */
+    val active_row_q = VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_BANK_W.W))
 
+    /** Current State */
     val state_q = RegInit(0.U(STATE_W.W))
+    /** Next State */
     val next_state_r = RegInit(0.U(STATE_W.W))
+    /** Target State (Next). When current state is ACTIVATE, use it to indicate
+      * whether next state is READ or WRITE. When current state is PRECHARGE,
+      * REFRESH priority is higher than ACTIVE, if target state is REFRESH, let
+      * next state is REFRESH, otherwise is ACTIVATE.
+      */
     val target_state_r = RegInit(0.U(STATE_W.W))
+    /** Target State (Current) */
     val target_state_q = RegInit(STATE_IDLE)
+    /** Deleay State (Used for all delay operations) */
     val delay_state_q = RegInit(STATE_IDLE)
 
-    // Address bits
+    /** SDRAM Column Address (Current) */
     val addr_col_w  = Cat(Fill(SDRAM_ROW_W - SDRAM_COL_W, 0.U(1.W)),
       ram_addr_w(SDRAM_COL_W, 2),
       0.U(1.W))
-    val addr_row_w  = ram_addr_w(SDRAM_ADDR_W, SDRAM_COL_W + 2 + 1)
+    /** SDRAM Row Address (Current) */
+    val addr_row_w = ram_addr_w(SDRAM_ADDR_W, SDRAM_COL_W + 2 + 1)
+    /** SDRAM Bank Address (Current) */
     val addr_bank_w = ram_addr_w(SDRAM_COL_W + 2, SDRAM_COL_W + 2 - 1)
 
+
     // ------------------------------------------------------------------------
-    // State Machine
+    // SDRAM State Machine
     // ------------------------------------------------------------------------
+    /** Todo: Use Decode api and Mux1H to refactor state machine */
+    /** SDRAM State Truth Table */
+    /** Todo: [Current State]     [CS#  RAS# CAS# WE#]     [Next State]
+      *        X                   X    X    X    X         X
+      */
     next_state_r := state_q
     target_state_r := target_state_q
 
     switch (state_q) {
+      /** Next State is IDLE, when the number of refresh is reached. */
       is (STATE_INIT) {
         when (refresh_q) {
           next_state_r := STATE_IDLE
         }
       }
+      /** IDLE is the most important STATE, it determine which state to jump to
+        * next based on conditions such as refresh counter, request enable, and
+        * row open, etc.
+        */
       is (STATE_IDLE) {
-        // Pending refresh
-        // Note: tRAS (open row time) cannot be exceeded due to periodic
-        //        auto refreshes.
         when (refresh_q) {
-          // Close open rows, then refresh
+          /** Close open rows, then refresh */
           when (row_open_q =/= 0.U) {
             next_state_r := STATE_PRECHARGE
-          }.otherwise {
+          }
+          .otherwise {
             next_state_r := STATE_REFRESH
           }
           target_state_r := STATE_REFRESH
-        }.elsewhen (ram_req_w) {
-          // Open row hit
-          when (row_open_q(addr_bank_w) && (addr_row_w === active_row_q(addr_bank_w))) {
+        }
+        .elsewhen (ram_req_w) {
+          /** Open row and active row hit at the same time */
+          when (row_open_q(addr_bank_w) &&
+               (addr_row_w === active_row_q(addr_bank_w))) {
             when (!ram_rd_w) {
               next_state_r := STATE_WRITE0
             }.otherwise {
               next_state_r := STATE_READ
             }
-            // Row miss, close row, open new row
-          }.elsewhen (row_open_q(addr_bank_w)) {
+          }
+          /** Open row miss, close it and open new row */
+          .elsewhen (row_open_q(addr_bank_w)) {
             next_state_r := STATE_PRECHARGE
             when (!ram_rd_w) {
               target_state_r := STATE_WRITE0
             }.otherwise {
               target_state_r := STATE_READ
             }
-            // No open row, open row
-          }.otherwise {
+          }
+          /** No open row, open row */
+          .otherwise {
             next_state_r := STATE_ACTIVATE
             when (!ram_rd_w) {
               target_state_r := STATE_WRITE0
@@ -467,127 +620,148 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           }
         }
       }
+      /** Before executing READ or WRITE, ACTIVATE must be executed, so by
+        * getting the value of target state, state machine can jump to the
+        * corresponding READ or WRITE state.
+        */
       is (STATE_ACTIVATE) {
-        // Proceed to read or write state
         next_state_r := target_state_r
       }
+      /** Next State is READ_WAIT */
       is (STATE_READ) {
         next_state_r := STATE_READ_WAIT
       }
+      /** Default next state is IDLE, but if another READ request with no
+        * refresh come, and its bank hits and row is active, next state is
+        * still READ.
+        */
       is (STATE_READ_WAIT) {
         next_state_r := STATE_IDLE
-        // Another pending read request (with no refresh pending)
         when (!refresh_q && ram_req_w && ram_rd_w) {
-          // Open row hit
-          when (row_open_q(addr_bank_w) && (addr_row_w === active_row_q(addr_bank_w))) {
+          when (row_open_q(addr_bank_w) &&
+               (addr_row_w === active_row_q(addr_bank_w))) {
             next_state_r := STATE_READ
           }
         }
       }
+      /** Next State is WRITE1 */
       is (STATE_WRITE0) {
         next_state_r := STATE_WRITE1
       }
+      /** Default next state is IDLE, but if another WRITE request with no
+        * refresh come, and its bank hits and row is active, next state is
+        * still WRITE.
+        */
       is (STATE_WRITE1) {
         next_state_r := STATE_IDLE
-        // Another pending write request (with no refresh pending)
         when (!refresh_q && ram_req_w && ram_wr_w =/= 0.U) {
-          // Open row hit
-          when (row_open_q(addr_bank_w) && (addr_row_w === active_row_q(addr_bank_w))) {
+          when (row_open_q(addr_bank_w) &&
+               (addr_row_w === active_row_q(addr_bank_w))) {
             next_state_r := STATE_WRITE0
           }
         }
       }
+      /** REFRESH priority is higher than ACTIVE, if target state is REFRESH,
+        * let next state is REFRESH, otherwise is ACTIVATE.
+        */
       is (STATE_PRECHARGE) {
-        // Closing row to perform refresh
         when (target_state_r === STATE_REFRESH) {
           next_state_r := STATE_REFRESH
-          // Must be closing row to open another
         }.otherwise {
           next_state_r := STATE_ACTIVATE
         }
       }
+      /** Next State is IDLE */
       is (STATE_REFRESH) {
         next_state_r := STATE_IDLE
       }
+      /** Next State is IDLE */
       is (STATE_DELAY) {
         next_state_r := delay_state_q
       }
     }
 
+
     // ------------------------------------------------------------------------
-    // Delays
+    // SDRAM Delay Operation
     // ------------------------------------------------------------------------
     val DELAY_W = 4
 
+    /** SDRAM Delay (Current)  */
     val delay_q = RegInit(0.U(DELAY_W.W))
+    /** SDRAM Delay (Next) */
     val delay_r = RegInit(0.U(DELAY_W.W))
 
     delay_r := 0.U(DELAY_W.W)
 
     switch (state_q) {
       is (STATE_ACTIVATE) {
-        // tRCD (ACTIVATE -> READ / WRITE)
-        delay_r := SDRAM_TRCD_CYCLES.asUInt
+        delay_r := SDRAM_CYCLES_TRCD.asUInt
       }
       is (STATE_READ_WAIT) {
         delay_r := SDRAM_READ_LATENCY.asUInt
-        // Another pending read request (with no refresh pending)
+        /** When READ request come, open row and active row hit at the same
+          * time, don't delay. */
         when (!refresh_q && ram_req_w && ram_rd_w) {
-          // Open row hit
-          when (row_open_q(addr_bank_w) && (addr_row_w === active_row_q(addr_bank_w))) {
+          when (row_open_q(addr_bank_w) &&
+               (addr_row_w === active_row_q(addr_bank_w))) {
             delay_r := 0.U(DELAY_W.W)
           }
         }
       }
       is (STATE_PRECHARGE) {
-        // tRP (PRECHARGE -> ACTIVATE)
-        delay_r := SDRAM_TRP_CYCLES.asUInt
+        delay_r := SDRAM_CYCLES_TRP.asUInt
       }
       is (STATE_REFRESH) {
-        // tRFC
-        delay_r := SDRAM_TRFC_CYCLES.asUInt
+        delay_r := SDRAM_CYCLES_TRFC.asUInt
       }
       is (STATE_DELAY) {
         delay_r := delay_q - 1.U(DELAY_W.W)
       }
     }
 
-    // Record target state
+    /** Record target state */
     target_state_q := target_state_r
-
-    // Record delayed state
+    /** Record delay state */
     delay_q := delay_r
 
+
     // ------------------------------------------------------------------------
-    // Refresh counter
+    // SDRAM Refresh Operation
     // ------------------------------------------------------------------------
+    /** SDRAM Refresh Counter Width */
     val REFRESH_CNT_W = 17
 
-    // Bug Here
-    val refresh_timer_q = RegInit(0.U(REFRESH_CNT_W.W))
+    /** Make ensure INIT is complete */
+    val refresh_timer_q = RegInit((SDRAM_TIME_INIT + 100).U(REFRESH_CNT_W.W))
     when (refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
-      refresh_timer_q := SDRAM_REFRESH_CYCLES.asUInt
-    }.otherwise {
+      refresh_timer_q := SDRAM_CYCLES_REFRESH.asUInt
+    }
+    .otherwise {
       refresh_timer_q := refresh_timer_q - 1.U
     }
 
     when (refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
       refresh_q := true.B
-    }.otherwise {
+    }
+    .otherwise {
       refresh_q := false.B
     }
 
+
     // ------------------------------------------------------------------------
-    // Input sampling
+    // SDRAM Input Sampling
     // ------------------------------------------------------------------------
+    /** Use 2-level register to implement input data samping, ensure input data
+      * is obtained correctly. */
     val sample_data0_q = RegInit(0.U(SDRAM_DATA_W.W))
     sample_data0_q := sdram_data_in_w
-
     val sample_data_q = RegInit(0.U(SDRAM_DATA_W.W))
     sample_data_q := sample_data0_q
 
+
     // ------------------------------------------------------------------------
-    // Command Output
+    // SDRAM Command Output
     // ------------------------------------------------------------------------
     command_q := CMD_NOP
     addr_q := 0.U(SDRAM_ROW_W.W)
@@ -600,13 +774,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           cke_q := true.B
         }.elsewhen (refresh_timer_q === 40.U) {
           command_q := CMD_PRECHARGE
-          // TODO: fix me: addr_q(ALL_BANKS) := 1.U(1.W)
-          addr_q := Cat(addr_q(SDRAM_ROW_W - 1, ALL_BANKS + 1), 1.U, addr_q(ALL_BANKS - 1, 0))
+          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 1.U(1.W)
+          addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1), 1.U, addr_q(BIT_ALL_BANKS - 1, 0))
         }.elsewhen (refresh_timer_q === 20.U || refresh_timer_q === 30.U) {
           command_q := CMD_REFRESH
         }.elsewhen (refresh_timer_q === 10.U) {
-          command_q := CMD_LOAD_MODE
-          addr_q := MODE_REG
+          command_q := CMD_LMR
+          addr_q := MODE_REGISTER
         }.otherwise {
           command_q := CMD_NOP
           addr_q := 0.U(SDRAM_ROW_W.W)
@@ -622,31 +796,35 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         // TODO: fix me: row_open_q(addr_bank_w) := 1.U(1.W)
         row_open_q := MuxLookup(addr_bank_w, row_open_q) (
           Seq(
-            0.U -> Cat(row_open_q(SDRAM_BANKS - 1, 1), 1.U),
-            1.U -> Cat(row_open_q(SDRAM_BANKS - 1, 2), 1.U, row_open_q(0)),
-            2.U -> Cat(row_open_q(SDRAM_BANKS - 1, 3), 1.U, row_open_q(SDRAM_BANKS - 3, 0)),
-            3.U -> Cat(1.U,                                 row_open_q(SDRAM_BANKS - 2, 0))
+            0.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 1), 1.U),
+            1.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 2), 1.U, row_open_q(0)),
+            2.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 3), 1.U, row_open_q(SDRAM_BANK_N - 3, 0)),
+            3.U -> Cat(1.U,                                  row_open_q(SDRAM_BANK_N - 2, 0))
           )
         )
       }
       is (STATE_PRECHARGE) {
+        command_q := CMD_PRECHARGE
         when (target_state_r === STATE_REFRESH) {
-          command_q := CMD_PRECHARGE
-          // TODO: fix me: addr_q(ALL_BANKS) := 1.U(1.W)
-          addr_q := Cat(addr_q(SDRAM_ROW_W - 1, ALL_BANKS + 1), 1.U, addr_q(ALL_BANKS - 1, 0))
-          row_open_q := 0.U(SDRAM_BANKS.W)
-        }.otherwise {
-          command_q := CMD_PRECHARGE
-          // TODO: fix me: addr_q(ALL_BANKS) := 0.U(1.W)
-          addr_q := Cat(addr_q(SDRAM_ROW_W - 1, ALL_BANKS + 1), 0.U, addr_q(ALL_BANKS - 1, 0))
+          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 1.U(1.W)
+          /** Precharge all banks */
+          addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1), 1.U, addr_q(BIT_ALL_BANKS - 1, 0))
+          /** Close all open rows */
+          row_open_q := 0.U(SDRAM_BANK_N.W)
+        }
+        .otherwise {
+          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 0.U(1.W)
+          /** Precharge specific bank */
+          addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1), 0.U, addr_q(BIT_ALL_BANKS - 1, 0))
           bank_q := addr_bank_w
           // TODO: fix me: row_open_q(addr_bank_w) := 0.U(1.W)
+          /** Close specific open row */
           row_open_q := MuxLookup(addr_bank_w, row_open_q) (
             Seq(
-              0.U -> Cat(row_open_q(SDRAM_BANKS - 1, 1), 0.U),
-              1.U -> Cat(row_open_q(SDRAM_BANKS - 1, 2), 0.U, row_open_q(0)),
-              2.U -> Cat(row_open_q(SDRAM_BANKS - 1, 3), 0.U, row_open_q(SDRAM_BANKS - 3, 0)),
-              3.U -> Cat(1.U,                                 row_open_q(SDRAM_BANKS - 2, 0))
+              0.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 1), 0.U),
+              1.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 2), 0.U, row_open_q(0)),
+              2.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 3), 0.U, row_open_q(SDRAM_BANK_N - 3, 0)),
+              3.U -> Cat(1.U,                                 row_open_q(SDRAM_BANK_N - 2, 0))
             )
           )
         }
@@ -661,8 +839,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         addr_q := addr_col_w
         bank_q := addr_bank_w
 
-        // TODO: fix me: addr_q(AUTO_PRECHARGE) := 0.U(1.W)
-        addr_q := Cat(addr_q(SDRAM_ROW_W - 1, AUTO_PRECHARGE + 1), 0.U, addr_q(AUTO_PRECHARGE - 1, 0))
+        // TODO: fix me: addr_q(BIT_AUTO_PRECHARGE) := 0.U(1.W)
+        /** Disable AUTO PRECHARGE (auto close of row) */
+        addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1), 0.U, addr_q(BIT_AUTO_PRECHARGE - 1, 0))
         dqm_q := 0.U(SDRAM_DQM_W.W)
       }
       is (STATE_WRITE0) {
@@ -671,9 +850,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         bank_q := addr_bank_w
         data_q := ram_write_data_w(15, 0)
 
-        // TODO: fix me: addr_q(AUTO_PRECHARGE) := 0.U(1.W)
-        addr_q := Cat(addr_q(SDRAM_ROW_W - 1, AUTO_PRECHARGE + 1), 0.U, addr_q(AUTO_PRECHARGE - 1, 0))
-        dqm_q := ~ram_wr_w(1, 0)
+        // TODO: fix me: addr_q(BIT_AUTO_PRECHARGE) := 0.U(1.W)
+        /** Disable AUTO PRECHARGE (auto close of row) */
+        addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1), 0.U, addr_q(BIT_AUTO_PRECHARGE - 1, 0))
+        /** Because data width is 16 bit, only 2 bits are needed to implement
+          * byte mask. */
+        dqm_q        := ~ram_wr_w(1, 0)
         dqm_buffer_q := ~ram_wr_w(3, 2)
 
         data_rd_en_q := false.B
@@ -682,57 +864,77 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         command_q := CMD_NOP
         data_q := data_buffer_q
 
-        // TODO: fix me: addr_q(AUTO_PRECHARGE) := 0.U(1.W)
-        addr_q := Cat(addr_q(SDRAM_ROW_W - 1, AUTO_PRECHARGE + 1), 0.U, addr_q(AUTO_PRECHARGE - 1, 0))
+        // TODO: fix me: addr_q(BIT_AUTO_PRECHARGE) := 0.U(1.W)
+        /** Disable AUTO PRECHARGE (auto close of row) */
+        addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1), 0.U, addr_q(BIT_AUTO_PRECHARGE - 1, 0))
         dqm_q := dqm_buffer_q
       }
     }
 
+
     // ------------------------------------------------------------------------
-    // Record read events
+    // SDRAM READ State Record
     // ------------------------------------------------------------------------
+    /** The length of register represents READ Latency, each bit represents
+      * whether the controller state is READ in different cycle.
+      */
     val rd_q = RegInit(0.U((SDRAM_READ_LATENCY + 2).W))
     rd_q := Cat(rd_q(SDRAM_READ_LATENCY, 0), state_q === STATE_READ)
 
+
     // ------------------------------------------------------------------------
-    // Data buffer
+    // SDRAM Data Buffer
     // ------------------------------------------------------------------------
+    /** Because SDRAM data width is 16bit, it is neccessary to store high
+      * 16-bit data to buffer temporarily.
+      */
     when (state_q === STATE_WRITE0) {
       data_buffer_q := ram_write_data_w(31, 16)
-    }.elsewhen (rd_q(SDRAM_READ_LATENCY + 1)) {
+    }
+    /** Judge state in the next cycle after delay, if it is READ, then store
+      * input sampling to buffer.
+      */
+    .elsewhen (rd_q(SDRAM_READ_LATENCY + 1)) {
       data_buffer_q := sample_data_q
     }
-
     ram_read_data_w := Cat(sample_data_q, data_buffer_q)
 
+
     // ------------------------------------------------------------------------
-    // ACK
+    // SDRAM ACK
     // ------------------------------------------------------------------------
+    /** Pulling signal high indicates that READ or WRITE is complete. */
     val ack_q = RegInit(false.B)
     when (state_q === STATE_WRITE1) {
       ack_q := true.B
-    }.elsewhen (rd_q(SDRAM_READ_LATENCY + 1)) {
+    }
+    .elsewhen (rd_q(SDRAM_READ_LATENCY + 1)) {
       ack_q := true.B
-    }.otherwise {
+    }
+    .otherwise {
       ack_q := false.B
     }
 
     ram_ack_w := ack_q
+    /** Pulling signal high indicates that AXI4 read address, write address,
+      * write data requests can be accepted for SDRAM.
+      */
     ram_accept_w := (state_q === STATE_READ || state_q === STATE_WRITE0)
 
+
     // ------------------------------------------------------------------------
-    // SDRAM I/O
+    // SDRAM Innput / Output
     // ------------------------------------------------------------------------
     // TODO: this is forbidden in RTL, use CTS blackbox instead.
     sdram.ck.foreach(_ := (~clock.asBool).asBool.asClock)
-    sdram.cke := cke_q
-    sdram.cs  := command_q(3)
-    sdram.ras := command_q(2)
-    sdram.cas := command_q(1)
-    sdram.we  := command_q(0)
-    sdram.dqm := dqm_q
-    sdram.ba  := bank_q
-    sdram.a   := addr_q
+    sdram.cke   := cke_q
+    sdram.cs    := command_q(3)
+    sdram.ras   := command_q(2)
+    sdram.cas   := command_q(1)
+    sdram.we    := command_q(0)
+    sdram.dqm   := dqm_q
+    sdram.ba    := bank_q
+    sdram.a     := addr_q
     sdram.dqDir := ~data_rd_en_q
     sdram.dqo   := data_q
 
