@@ -13,6 +13,9 @@ import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
 /** The RTL here is rewrite from [[https://github.com/ultraembedded/core_sdram_axi4]].
   */
 trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
+  // ==========================================================================
+  // SDRAM Utils
+  // ==========================================================================
   // TODO: use Mux1H for selection
   /** Calculate the next address of AXI4 bus. */
   private def calculateAddressNext(addr: UInt, axType: UInt, axLen: UInt): UInt =
@@ -80,64 +83,71 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         rd_ptr := rd_ptr + 1.U
       }
 
-      /** Counter represent the status of read/write, if read signals handshake,
-        * counter++, if write signals handshake, counter--
+      /** Counter represent the status of read or write, if read signals
+        * handshake, counter++, if write signals handshake, counter--.
         */
       when ((io.push_i && io.accept_o) && !(io.pop_i && io.valid_o)) {
         count := count + 1.U
-      }.elsewhen (!(io.push_i && io.accept_o) && (io.pop_i && io.valid_o)) {
+      }
+      .elsewhen (!(io.push_i && io.accept_o) && (io.pop_i && io.valid_o)) {
         count := count - 1.U
       }
 
       /** Use counter to control whether to input or output data. Read operation
-       *  is combinatorial, data only depends on the read pointer . */
+        * is combinatorial, data only depends on the read pointer.
+        */
       io.accept_o   := (count =/= DEPTH.U)
       io.valid_o    := (count =/= 0.U)
       io.data_out_o := ram(rd_ptr)
     }
   }
 
+
+  // ==========================================================================
+  // SDRAM Main
+  // ==========================================================================
   withClockAndReset(clock, reset) {
-    // ************************************************************************
-    // SDRAM Request and Buffer
-    // ************************************************************************
-    /** SDRAM read/write request length */
+    // ========================================================================
+    // AXI4 Request and Response
+    // ========================================================================
+    // ------------------------------------------------------------------------
+    // AXI4 Request Wires and Registers
+    // ------------------------------------------------------------------------
+    /** AXI4 read and write request length */
     val req_len_q = RegInit(0.U(8.W))
-    /** SDRAM read/write addr */
+    /** AXI4 read and write addr */
     val req_addr_q = RegInit(0.U(32.W))
-    /** SDRAM write request enable
-      * @todo change to Bool type.
-      */
+    /** AXI4 write request enable */
     val req_wr_q = RegInit(false.B)
-    /** SDRAM read request enable
-      * @todo change to [[Bool]] type.
-      */
+    /** AXI4 read request enable */
     val req_rd_q = RegInit(false.B)
-    /** SDRAM read/write request id */
+    /** AXI4 read and write request id */
     val req_id_q = RegInit(0.U(4.W))
-    /** SDRAM read/write burst type */
+    /** AXI4 read and write burst type */
     val req_axburst_q = RegInit(0.U(2.W))
-    /** SDRAM read/write burst length */
+    /** AXI4 read and write burst length */
     val req_axlen_q = RegInit(0.U(8.W))
-    /** SDRAM read/write priority
-      * @todo change to [[Bool]] type. and add more documentation.
-      */
+    /** AXI4 read and write priority, when ar or aw handshake happen, it will
+      * flip value, ensure that when neither the read nor the write request is
+      * in the hold state, if prio is high, write is executed, otherwise read
+      * is executed. */
     val req_prio_q = RegInit(false.B)
 
-    /** SDRAM write strb, it cotains both enable and mask functions. when it
-     * don't equal 4'b0000, it represent write is enable.
-     */
+    /** SDRAM write mask, it cotains both enable and mask functions. when it
+      * don't equal 4'b0000, it represent write is enable. Since the date bit
+      * of AXI4 is 32 and that of SDRAM is 16, write operation is divided into
+      * 2 steps, the lower 2 bit of mask are used for the first write (WRITE0),
+      * and the upper 2 bit are used for the second write (WRITE1).
+      */
     val ram_wr = WireInit(0.U(4.W))
     /** SDRAM read enalbe */
-    val ram_rd = WireInit(0.U(4.W))
-    /** Whether SDRAM can accept data
-      * @todo change to [[Bool]] type.
-      */
+    val ram_rd = WireInit(0.U(1.W))
+    /** SDRAM accept enable */
     val ram_accept = WireInit(false.B)
 
     /** When SDRAM mode is brust, let it perform read or write operation
-     * continuously before request ends.
-     */
+      * continuously before request ends.
+      */
     when ((ram_wr =/= 0.U || ram_rd === 1.U) && ram_accept) {
       when (req_len_q === 0.U) {
         req_rd_q := false.B
@@ -147,7 +157,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_len_q := req_len_q - 1.U
     }
 
-    /** When read/write handshake happens, update related request registers. */
+    /** When read or write handshake happens, update request registers. */
     when (axi.aw.valid && axi.aw.ready) {
       when (axi.w.valid && axi.w.ready) {
         req_wr_q := !axi.w.bits.last
@@ -158,7 +168,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         req_addr_q := calculateAddressNext(axi.aw.bits.addr,
           axi.aw.bits.burst,
           axi.aw.bits.len)
-      }.otherwise {
+      }
+      .otherwise {
         req_wr_q := true.B
         req_len_q := axi.aw.bits.len
         req_id_q := axi.aw.bits.id
@@ -167,7 +178,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         req_addr_q := axi.aw.bits.addr
       }
       req_prio_q := !req_prio_q
-    }.elsewhen (axi.ar.valid && axi.ar.ready) {
+    }
+    .elsewhen (axi.ar.valid && axi.ar.ready) {
       req_rd_q := (axi.ar.bits.len =/= 0.U)
       req_len_q := axi.ar.bits.len - 1.U
       req_addr_q := calculateAddressNext(axi.ar.bits.addr,
@@ -179,56 +191,62 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_prio_q := !req_prio_q
     }
 
-    /** SDRAM read request hold status.
-      * @todo change to Bool type.
-      */
+    /** AXI4 read request hold status */
     val req_hold_rd_q = RegInit(false.B)
-    /** SDRAM write request hold status
-      * @todo change to Bool type.
-      */
+    /** AXI4 write request hold status */
     val req_hold_wr_q = RegInit(false.B)
 
-    /** When SDRAM read/write request is enable and cannot accept data, assert
-      * corresponding hold status, otherwise deassert.
+    /** When AXI4 read or write request is enable and cannot accept data,
+      * assert corresponding hold status, otherwise deassert.
       */
-    when(ram_rd === 1.U && !ram_accept) {
+    when (ram_rd === 1.U && !ram_accept) {
       req_hold_rd_q := true.B
-    }.elsewhen(ram_accept) {
+    }
+    .elsewhen(ram_accept) {
       req_hold_rd_q := false.B
     }
-    when(ram_wr =/= 0.U && !ram_accept) {
+    when (ram_wr =/= 0.U && !ram_accept) {
       req_hold_wr_q := true.B
-    }.elsewhen(ram_accept) {
+    }
+    .elsewhen(ram_accept) {
       req_hold_wr_q := true.B
     }
 
+
     // ------------------------------------------------------------------------
-    // Request tracking
+    // AXI4 Request Tracking
     // ------------------------------------------------------------------------
-    /**  SDRAM request push */
+    /** AXI4 request push enable */
     val req_push_w = ((ram_rd === 1.U) || (ram_wr =/= 0.U)) && ram_accept
-    /** SDRAM request input */
+    /** AXI4 request input control
+      * Req[5]:     Request Status, 0 = Write, 1 = Read
+      * Req[4]:     AXI4 Address or Request Length Status, 0 = Length > 1,
+      *             1 = Length equal 0
+      * Req[3 : 0]: AXI4 Address ID
+      */
     val req_in_r = RegInit(0.U(6.W))
-    /** SDRAM request output valid */
+    /** AXI4 request output valid enable */
     val req_out_valid_w = WireInit(false.B)
-    /** SDRAM request out */
+    /** AXI4 request out control */
     val req_out_w = WireInit(0.U(6.W))
-    /** SDRAM response accept */
+    /** AXI4 response accept enable */
     val resp_accept_w = WireInit(false.B)
-    /** SDRAM request FIFO accept */
+    /** AXI4 request FIFO accept enable */
     val req_fifo_accept_w = WireInit(false.B)
     /** SDRAM read data */
     val ram_read_data_w = WireInit(0.U(32.W))
     /** SDRAM ack enable */
     val ram_ack_w = WireInit(false.B)
-    /** SDRAM accept data enable */
+    /** SDRAM accept enable */
     val ram_accept_w = WireInit(false.B)
 
     when (axi.ar.valid && axi.ar.ready) {
       req_in_r := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
-    }.elsewhen(axi.aw.valid && axi.aw.ready) {
+    }
+    .elsewhen (axi.aw.valid && axi.aw.ready) {
       req_in_r := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
-    }.otherwise {
+    }
+    .otherwise {
       req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
     }
 
@@ -247,8 +265,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val resp_is_last_w = req_out_w(4)
     val resp_id_w = req_out_w(3, 0)
 
+
     // ------------------------------------------------------------------------
-    // Response buffering
+    // AXI4 Response Buffering
     // ------------------------------------------------------------------------
     val resp_valid_w = WireInit(false.B)
 
@@ -262,8 +281,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     axi.r.bits.data := u_response.io.data_out_o
     resp_valid_w := u_response.io.valid_o
 
+
     // ------------------------------------------------------------------------
-    // SDRAM Request
+    // AXI4 Request
     // ------------------------------------------------------------------------
     val write_prio_w = (req_prio_q && !req_hold_rd_q) || req_hold_wr_q
     val read_prio_w = (!req_prio_q && !req_hold_wr_q) || req_hold_rd_q
@@ -296,8 +316,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val ram_rd_w = rd_w
     val ram_wr_w = Mux(wr_w, axi.w.bits.strb, 0.U(4.W))
 
+
     // ------------------------------------------------------------------------
-    // SDRAM Response
+    // AXI4 Response
     // ------------------------------------------------------------------------
     axi.b.valid := resp_valid_w && resp_is_write_w.asBool && resp_is_last_w
     axi.b.bits.resp := 0.U(2.W)
@@ -313,9 +334,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     resp_accept_w := (axi.r.valid && axi.r.ready) ||
       (axi.b.valid && axi.b.ready) ||
       (resp_valid_w && resp_is_write_w.asBool && !resp_is_last_w)
-
-
-
 
 
     // ========================================================================
@@ -854,7 +872,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         /** Disable AUTO PRECHARGE (auto close of row) */
         addr_q := Cat(addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1), 0.U, addr_q(BIT_AUTO_PRECHARGE - 1, 0))
         /** Because data width is 16 bit, only 2 bits are needed to implement
-          * byte mask. */
+          * byte mask. Low effective. */
         dqm_q        := ~ram_wr_w(1, 0)
         dqm_buffer_q := ~ram_wr_w(3, 2)
 
