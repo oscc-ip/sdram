@@ -22,7 +22,7 @@ trait Elaborator {
 
   def configImpl[P <: SerializableModuleParameter: universe.TypeTag](
                                                                       parameter: P
-                                                                    )(implicit rwP: upickle.default.Writer[P]) = os.write(
+                                                                    )(implicit rwP: upickle.default.Writer[P]) = os.write.over(
     os.pwd / s"${getClass.getSimpleName.replace("$", "")}.json",
     upickle.default.write(parameter)
   )
@@ -60,10 +60,8 @@ trait Elaborator {
     val annoJsonFile = os.pwd / s"${fir.main}.anno.json"
     val firFile = os.pwd / s"${fir.main}.fir"
     val svFile = os.pwd / s"${fir.main}.sv"
-    os.remove(firFile)
-    os.remove(annoJsonFile)
-    os.write(firFile, fir.serialize)
-    os.write(
+    os.write.over(firFile, fir.serialize)
+    os.write.over(
       annoJsonFile,
       firrtl.annotations.JsonProtocol.serializeRecover(annos)
     )

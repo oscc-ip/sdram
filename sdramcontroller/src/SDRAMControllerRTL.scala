@@ -582,6 +582,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM State Truth Table */
     /** Todo: [Current State]     [CS#  RAS# CAS# WE#]     [Next State]
       *        X                   X    X    X    X         X
+      *
+      *
+      *
       */
     next_state_r := state_q
     target_state_r := target_state_q
