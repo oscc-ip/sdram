@@ -1,7 +1,10 @@
-/out/
-/.idea/
-/.bsp/
 /dependencies/
+/out/
+/.bsp/
+/.bloop/
+/.idea/
+/.metals/
+/.vscode/
 /*.json
 /*.fir
 /*.sv
