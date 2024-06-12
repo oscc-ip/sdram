@@ -1,15 +1,14 @@
 # SDRAM
 
 # Dev Guide
-1. Install Nix 
+1. Install Nix
 2. Enter development environment:
 ```bash
 nix develop .#oscc
 ```
-3. Setup Mill BSP or Idea
+3. Setup Mill BSP
 ```bash
 mill mill.bsp.BSP/install
-mill mill.idea.GenIdea/idea
 ```
 4. Open your favorite IDE
 
