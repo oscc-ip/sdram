@@ -4,6 +4,7 @@ package oscc.sdramcontroller
 import chisel3._
 import chisel3.experimental.SerializableModuleParameter
 import chisel3.experimental.dataview.DataViewable
+import chisel3.probe.Probe
 import org.chipsalliance.amba.axi4.bundle._
 import org.chipsalliance.jedec.sdram.{SDRAMChiselType, SDRAMParameter}
 import upickle.default
@@ -16,22 +17,22 @@ object SDRAMControllerParameter {
 }
 
 case class SDRAMControllerParameter(
-                                     axiParameter: AXI4BundleParameter,
+                                     dataParameter: AXI4BundleParameter,
                                      sdramParameter: SDRAMParameter
                                    ) extends SerializableModuleParameter {
-  require(axiParameter.supportId, "doesn't support id")
-  require(axiParameter.supportLen, "doesn't support len")
-  require(axiParameter.supportSize, "doesn't support size")
-  require(axiParameter.supportBurst, "should support burst")
-  require(axiParameter.supportStrb, "doesn't support strb")
+  require(dataParameter.supportId, "doesn't support id")
+  require(dataParameter.supportLen, "doesn't support len")
+  require(dataParameter.supportSize, "doesn't support size")
+  require(dataParameter.supportBurst, "should support burst")
+  require(dataParameter.supportStrb, "doesn't support strb")
 
-  require(!axiParameter.supportLock, "doesn't support lock")
-  require(!axiParameter.supportRegion, "doesn't support region")
-  require(!axiParameter.supportCache, "doesn't support cache")
-  require(!axiParameter.supportQos, "doesn't support qos")
-  require(!axiParameter.supportResp, "doesn't support resp")
-  require(!axiParameter.supportProt, "doesn't support prot")
-  require(axiParameter.dataWidth == sdramParameter.dataWidth, "data width of axi and sdram should same, please inter busip before controller.")
+  require(!dataParameter.supportLock, "doesn't support lock")
+  require(!dataParameter.supportRegion, "doesn't support region")
+  require(!dataParameter.supportCache, "doesn't support cache")
+  require(!dataParameter.supportQos, "doesn't support qos")
+  require(!dataParameter.supportResp, "doesn't support resp")
+  require(!dataParameter.supportProt, "doesn't support prot")
+  require(dataParameter.dataWidth == sdramParameter.dataWidth, "data width of axi and sdram should same, please inter busip before controller.")
 }
 
 class SDRAMControllerInterface(val parameter: SDRAMControllerParameter) extends Record {
@@ -40,15 +41,25 @@ class SDRAMControllerInterface(val parameter: SDRAMControllerParameter) extends 
       "clock" -> Input(Clock()),
       // TODO: we only support sync reset for now.
       "reset" -> Input(Bool()),
-      "AXI" -> Flipped(verilog.irrevocable(parameter.axiParameter)),
+      "dataAXI" -> Flipped(verilog.irrevocable(parameter.dataParameter)),
+      // TODO: add another parameter for control interface
+      //       "controlAXI" -> Flipped(verilog.irrevocable(parameter.dataParameter)),
       // TODO: we should have two types of SDRAM: IO(has inout), Digital(no inout, has dir.)
-      "SDRAM" -> new SDRAMChiselType(parameter.sdramParameter),
+      "sdram" -> new SDRAMChiselType(parameter.sdramParameter),
+      "dv" -> Output(new SDRAMControllerProbe(parameter)),
     )
   )
   def clock: Clock = elements("clock").asInstanceOf[Clock]
   def reset: Bool = elements("reset").asInstanceOf[Bool]
-  def axi: AXI4RWIrrevocable = elements("AXI").asInstanceOf[AXI4RWIrrevocableVerilog].viewAs[AXI4RWIrrevocable]
-  def sdram: SDRAMChiselType = elements("SDRAM").asInstanceOf[SDRAMChiselType]
+  def data: AXI4RWIrrevocable = elements("dataAXI").asInstanceOf[AXI4RWIrrevocableVerilog].viewAs[AXI4RWIrrevocable]
+//  def control: AXI4RWIrrevocable = elements("controlAXI").asInstanceOf[AXI4RWIrrevocableVerilog].viewAs[AXI4RWIrrevocable]
+  def dv: SDRAMControllerProbe = elements("dv").asInstanceOf[SDRAMControllerProbe]
+  def sdram: SDRAMChiselType = elements("sdram").asInstanceOf[SDRAMChiselType]
+}
+
+/** used to capture internal RTL signals as Cross Module Reference. */
+class SDRAMControllerProbe(val parameter: SDRAMControllerParameter) extends Bundle {
+  val readRequestHoldStatus: Bool = Probe(Bool())
 }
 
 trait HasSDRAMControllerInterface {
@@ -56,6 +67,8 @@ trait HasSDRAMControllerInterface {
   val interface: SDRAMControllerInterface
   lazy val clock = interface.clock
   lazy val reset = interface.reset
-  lazy val axi = interface.axi
+  lazy val data = interface.data
+//  lazy val control = interface.control
   lazy val sdram = interface.sdram
+  lazy val dv = interface.dv
 }

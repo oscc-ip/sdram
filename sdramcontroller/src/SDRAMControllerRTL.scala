@@ -5,7 +5,8 @@
 package oscc.sdramcontroller
 
 import chisel3._
-import chisel3.util.{MuxLookup, Cat, Fill, switch, is, Mux1H}
+import chisel3.probe.{ProbeValue, define}
+import chisel3.util.{Cat, Fill, Mux1H, MuxLookup, is, switch}
 import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
 
 // This is what RTL designer need to implement, as well as necessary verification signal definitions.
@@ -38,7 +39,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       )
     )
 
-  /** First In First Out module */
+  /** First In First Out module
+    * TODO: use DWBB FIFO
+    */
   private class FIFO(WIDTH: Int = 8, DEPTH: Int = 4, ADDR_W: Int = 2) extends Module {
     val io = IO(new Bundle {
       /** FIFO clock */
@@ -103,6 +106,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
   }
 
 
+  // TODO: rename all hardware to camel case.
   // ==========================================================================
   // SDRAM Main
   // ==========================================================================
@@ -158,41 +162,43 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     }
 
     /** When read or write handshake happens, update request registers. */
-    when (axi.aw.valid && axi.aw.ready) {
-      when (axi.w.valid && axi.w.ready) {
-        req_wr_q := !axi.w.bits.last
-        req_len_q := axi.aw.bits.len - 1.U
-        req_id_q := axi.aw.bits.id
-        req_axburst_q := axi.aw.bits.burst
-        req_axlen_q := axi.aw.bits.len
-        req_addr_q := calculateAddressNext(axi.aw.bits.addr,
-          axi.aw.bits.burst,
-          axi.aw.bits.len)
+    when (data.aw.valid && data.aw.ready) {
+      when (data.w.valid && data.w.ready) {
+        req_wr_q := !data.w.bits.last
+        req_len_q := data.aw.bits.len - 1.U
+        req_id_q := data.aw.bits.id
+        req_axburst_q := data.aw.bits.burst
+        req_axlen_q := data.aw.bits.len
+        req_addr_q := calculateAddressNext(data.aw.bits.addr,
+          data.aw.bits.burst,
+          data.aw.bits.len)
       }
       .otherwise {
         req_wr_q := true.B
-        req_len_q := axi.aw.bits.len
-        req_id_q := axi.aw.bits.id
-        req_axburst_q := axi.aw.bits.burst
-        req_axlen_q := axi.aw.bits.len
-        req_addr_q := axi.aw.bits.addr
+        req_len_q := data.aw.bits.len
+        req_id_q := data.aw.bits.id
+        req_axburst_q := data.aw.bits.burst
+        req_axlen_q := data.aw.bits.len
+        req_addr_q := data.aw.bits.addr
       }
       req_prio_q := !req_prio_q
     }
-    .elsewhen (axi.ar.valid && axi.ar.ready) {
-      req_rd_q := (axi.ar.bits.len =/= 0.U)
-      req_len_q := axi.ar.bits.len - 1.U
-      req_addr_q := calculateAddressNext(axi.ar.bits.addr,
-        axi.ar.bits.burst,
-        axi.ar.bits.len)
-      req_id_q := axi.ar.bits.id
-      req_axburst_q := axi.ar.bits.burst
-      req_axlen_q := axi.ar.bits.len
+    .elsewhen (data.ar.valid && data.ar.ready) {
+      req_rd_q := (data.ar.bits.len =/= 0.U)
+      req_len_q := data.ar.bits.len - 1.U
+      req_addr_q := calculateAddressNext(data.ar.bits.addr,
+        data.ar.bits.burst,
+        data.ar.bits.len)
+      req_id_q := data.ar.bits.id
+      req_axburst_q := data.ar.bits.burst
+      req_axlen_q := data.ar.bits.len
       req_prio_q := !req_prio_q
     }
 
     /** AXI4 read request hold status */
     val req_hold_rd_q = RegInit(false.B)
+    // example to probe internal signals for verification.
+    dv.readRequestHoldStatus := ProbeValue(req_hold_rd_q)
     /** AXI4 write request hold status */
     val req_hold_wr_q = RegInit(false.B)
 
@@ -240,11 +246,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM accept enable */
     val ram_accept_w = WireInit(false.B)
 
-    when (axi.ar.valid && axi.ar.ready) {
-      req_in_r := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
+    when (data.ar.valid && data.ar.ready) {
+      req_in_r := Cat(1.U(1.W), data.ar.bits.len === 0.U, data.ar.bits.id)
     }
-    .elsewhen (axi.aw.valid && axi.aw.ready) {
-      req_in_r := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
+    .elsewhen (data.aw.valid && data.aw.ready) {
+      req_in_r := Cat(0.U(1.W), data.aw.bits.len === 0.U, data.aw.bits.id)
     }
     .otherwise {
       req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
@@ -278,7 +284,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_response.io.push_i := ram_ack_w
     u_response.io.accept_o := DontCare
     u_response.io.pop_i := resp_accept_w
-    axi.r.bits.data := u_response.io.data_out_o
+    data.r.bits.data := u_response.io.data_out_o
     resp_valid_w := u_response.io.valid_o
 
 
@@ -288,61 +294,66 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val write_prio_w = (req_prio_q && !req_hold_rd_q) || req_hold_wr_q
     val read_prio_w = (!req_prio_q && !req_hold_wr_q) || req_hold_rd_q
 
-    val write_active_w = (axi.aw.valid || req_wr_q) &&
+    val write_active_w = (data.aw.valid || req_wr_q) &&
       !req_rd_q &&
       req_fifo_accept_w &&
-      (write_prio_w || req_wr_q || !axi.ar.valid)
-    val read_active_w = (axi.ar.valid || req_rd_q) &&
+      (write_prio_w || req_wr_q || !data.ar.valid)
+    val read_active_w = (data.ar.valid || req_rd_q) &&
       !req_wr_q &&
       req_fifo_accept_w &&
-      (read_prio_w || req_rd_q || !axi.aw.valid)
+      (read_prio_w || req_rd_q || !data.aw.valid)
 
-    axi.aw.ready := write_active_w && !req_wr_q && ram_accept_w &&
+    data.aw.ready := write_active_w && !req_wr_q && ram_accept_w &&
       req_fifo_accept_w
-    axi.w.ready := write_active_w && ram_accept_w &&
+    data.w.ready := write_active_w && ram_accept_w &&
       req_fifo_accept_w
-    axi.ar.ready := read_active_w && !req_rd_q && ram_accept_w &&
+    data.ar.ready := read_active_w && !req_rd_q && ram_accept_w &&
       req_fifo_accept_w
 
     val addr_w = Mux(req_wr_q || req_rd_q,
       req_addr_q,
-      Mux(write_active_w, axi.aw.bits.addr, axi.ar.bits.addr))
+      Mux(write_active_w, data.aw.bits.addr, data.ar.bits.addr))
 
-    val wr_w = write_active_w && axi.w.valid
+    val wr_w = write_active_w && data.w.valid
     val rd_w = read_active_w
 
     val ram_addr_w = addr_w
-    val ram_write_data_w = axi.w.bits.data
+    val ram_write_data_w = data.w.bits.data
     val ram_rd_w = rd_w
-    val ram_wr_w = Mux(wr_w, axi.w.bits.strb, 0.U(4.W))
+    val ram_wr_w = Mux(wr_w, data.w.bits.strb, 0.U(4.W))
 
 
     // ------------------------------------------------------------------------
     // AXI4 Response
     // ------------------------------------------------------------------------
-    axi.b.valid := resp_valid_w && resp_is_write_w.asBool && resp_is_last_w
-    axi.b.bits.resp := 0.U(2.W)
-    axi.b.bits.id := resp_id_w
-    axi.b.bits.user := 0.U
+    data.b.valid := resp_valid_w && resp_is_write_w.asBool && resp_is_last_w
+    data.b.bits.resp := 0.U(2.W)
+    data.b.bits.id := resp_id_w
+    data.b.bits.user := 0.U
 
-    axi.r.valid := resp_valid_w && resp_is_read_w
-    axi.r.bits.resp := 0.U(2.W)
-    axi.r.bits.id := resp_id_w
-    axi.r.bits.last := resp_is_last_w
-    axi.r.bits.user := 0.U
+    data.r.valid := resp_valid_w && resp_is_read_w
+    data.r.bits.resp := 0.U(2.W)
+    data.r.bits.id := resp_id_w
+    data.r.bits.last := resp_is_last_w
+    data.r.bits.user := 0.U
 
-    resp_accept_w := (axi.r.valid && axi.r.ready) ||
-      (axi.b.valid && axi.b.ready) ||
+    resp_accept_w := (data.r.valid && data.r.ready) ||
+      (data.b.valid && data.b.ready) ||
       (resp_valid_w && resp_is_write_w.asBool && !resp_is_last_w)
 
 
     // ========================================================================
     // SDRAM Controller
+    // [[control]] should be used to fine tune the dyanmic paraemters below
     // ========================================================================
     // ------------------------------------------------------------------------
     // SDRAM Parameters
     // ------------------------------------------------------------------------
-    /** SDRAM External Parameters (User can customize them) */
+    /** SDRAM External Parameters (User can customize them)
+      * TODO: move them to [[SDRAMControllerParameter.sdramParameter]],
+      *       board level will be configured at boot time.
+      *       frequency, low power should be configured at runtime.
+      */
     val SDRAM_MHZ              = 50
     val SDRAM_ADDR_W           = 24
     val SDRAM_COL_W            = 9

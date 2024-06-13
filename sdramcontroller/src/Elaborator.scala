@@ -3,11 +3,8 @@
 package oscc.sdramcontroller
 
 import chisel3.RawModule
-import chisel3.experimental.{
-  SerializableModule,
-  SerializableModuleGenerator,
-  SerializableModuleParameter
-}
+import chisel3.experimental.{SerializableModule, SerializableModuleGenerator, SerializableModuleParameter}
+import chisel3.stage.{PrintFullStackTraceAnnotation, ThrowOnFirstErrorAnnotation}
 import mainargs.TokensReader
 
 import scala.reflect.runtime.universe

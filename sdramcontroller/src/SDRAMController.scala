@@ -11,6 +11,7 @@ class SDRAMController(val parameter: SDRAMControllerParameter)
   )
     with SerializableModule[SDRAMControllerParameter]
     with SDRAMControllerRTL
+    with SDRAMControllerDV
     with Public {
   lazy val interface: SDRAMControllerInterface = io
 }
