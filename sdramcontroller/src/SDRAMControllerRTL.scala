@@ -5,7 +5,7 @@
 package oscc.sdramcontroller
 
 import chisel3._
-import chisel3.util.{MuxLookup, Cat, Fill, switch, is, Mux1H}
+import chisel3.util._
 import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
 
 // This is what RTL designer need to implement, as well as necessary verification signal definitions.
@@ -17,7 +17,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
   // ==========================================================================
   // SDRAM Utils
   // ==========================================================================
-  // TODO: use Mux1H for selection
   /** Calculate the next address of AXI4 bus. */
   private def calculateAddressNext(
       addr: UInt,
@@ -28,15 +27,16 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       Seq(
         FIXED -> 0.U,
         WARP -> {
-          val mask = MuxLookup(axLen, "h3f".U(32.W))(
-            Seq(
-              "d0".U -> "h03".U,
-              "d1".U -> "h07".U,
-              "d3".U -> "h0F".U,
-              "d7".U -> "h1F".U,
-              "d15".U -> "h3F".U
-            )
-          )
+//          val mask = MuxLookup(axLen, "h3f".U(32.W))(
+//            Seq(
+//              "d0".U -> "h03".U,
+//              "d1".U -> "h07".U,
+//              "d3".U -> "h0F".U,
+//              "d7".U -> "h1F".U,
+//              "d15".U -> "h3F".U
+//            )
+//          )
+          val mask = Cat(axLen, "b11".U(2.W))
           (addr & (~mask).asUInt) | ((addr + 4.U) & mask)
         },
         INCR -> (addr + 4.U)
