@@ -21,34 +21,34 @@ trait Elaborator {
   }
 
   def configImpl[P <: SerializableModuleParameter: universe.TypeTag](
-                                                                      parameter: P
-                                                                    )(implicit rwP: upickle.default.Writer[P]) = os.write.over(
+      parameter: P
+  )(implicit rwP: upickle.default.Writer[P]) = os.write.over(
     os.pwd / s"${getClass.getSimpleName.replace("$", "")}.json",
     upickle.default.write(parameter)
   )
 
   def designImpl[
-    M <: SerializableModule[P]: universe.TypeTag,
-    P <: SerializableModuleParameter: universe.TypeTag
+      M <: SerializableModule[P]: universe.TypeTag,
+      P <: SerializableModuleParameter: universe.TypeTag
   ](parameter: os.Path, runFirtool: Boolean)(implicit
-                                             rwP: upickle.default.Reader[P]
+      rwP: upickle.default.Reader[P]
   ) = {
     var fir: firrtl.ir.Circuit = null
     val annos = Seq(
       new chisel3.stage.phases.Elaborate,
       new chisel3.stage.phases.Convert
     ).foldLeft(
-        Seq(
-          chisel3.stage.ChiselGeneratorAnnotation(() =>
-            SerializableModuleGenerator(
-              runtimeMirror(getClass.getClassLoader)
-                .runtimeClass(typeOf[M].typeSymbol.asClass)
-                .asInstanceOf[Class[M]],
-              upickle.default.read[P](os.read(parameter))
-            ).module().asInstanceOf[RawModule]
-          )
-        ): firrtl.AnnotationSeq
-      ) { case (annos, stage) => stage.transform(annos) }
+      Seq(
+        chisel3.stage.ChiselGeneratorAnnotation(() =>
+          SerializableModuleGenerator(
+            runtimeMirror(getClass.getClassLoader)
+              .runtimeClass(typeOf[M].typeSymbol.asClass)
+              .asInstanceOf[Class[M]],
+            upickle.default.read[P](os.read(parameter))
+          ).module().asInstanceOf[RawModule]
+        )
+      ): firrtl.AnnotationSeq
+    ) { case (annos, stage) => stage.transform(annos) }
       .flatMap {
         case firrtl.stage.FirrtlCircuitAnnotation(circuit) =>
           fir = circuit

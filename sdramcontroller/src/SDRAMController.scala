@@ -6,9 +6,9 @@ import chisel3._
 import chisel3.experimental.SerializableModule
 
 class SDRAMController(val parameter: SDRAMControllerParameter)
-  extends FixedIORawModule[SDRAMControllerInterface](
-    new SDRAMControllerInterface(parameter)
-  )
+    extends FixedIORawModule[SDRAMControllerInterface](
+      new SDRAMControllerInterface(parameter)
+    )
     with SerializableModule[SDRAMControllerParameter]
     with SDRAMControllerRTL
     with Public {
