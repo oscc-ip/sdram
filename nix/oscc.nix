@@ -68,8 +68,6 @@ let
 
     buildPhase = ''
       mill -i '__.assembly'
-      mill -i t1package.sourceJar
-      mill -i t1package.chiselPluginJar
     '';
 
     installPhase = ''
