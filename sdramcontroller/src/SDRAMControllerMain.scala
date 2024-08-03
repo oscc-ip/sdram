@@ -27,6 +27,13 @@ object SDRAMControllerMain extends Elaborator {
     runFirtool.value
   )
 
+  @main
+  def testbench(
+                 @arg(name = "parameter") parameter: os.Path =
+                 os.pwd / s"${getClass.getSimpleName.replace("$", "")}.json",
+                 @arg(name = "run-firtool") runFirtool: mainargs.Flag
+               ) = testImpl[SDRAMControllerTestbenchMain](parameter, runFirtool.value)
+
   implicit def SDRAMParameterMainParser: ParserForClass[SDRAMParameterMain] =
     ParserForClass[SDRAMParameterMain]
 

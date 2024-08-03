@@ -3,13 +3,10 @@
 package oscc.sdramcontroller
 
 import chisel3.RawModule
-import chisel3.experimental.{
-  SerializableModule,
-  SerializableModuleGenerator,
-  SerializableModuleParameter
-}
+import chisel3.experimental.{SerializableModule, SerializableModuleGenerator, SerializableModuleParameter}
 import mainargs.TokensReader
 
+import scala.reflect.ClassTag
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe.{runtimeMirror, typeOf}
 
@@ -49,6 +46,53 @@ trait Elaborator {
         )
       ): firrtl.AnnotationSeq
     ) { case (annos, stage) => stage.transform(annos) }
+      .flatMap {
+        case firrtl.stage.FirrtlCircuitAnnotation(circuit) =>
+          fir = circuit
+          None
+        case _: chisel3.stage.DesignAnnotation[_] => None
+        case _: chisel3.stage.ChiselCircuitAnnotation => None
+        case a => Some(a)
+      }
+    val annoJsonFile = os.pwd / s"${fir.main}.anno.json"
+    val firFile = os.pwd / s"${fir.main}.fir"
+    val svFile = os.pwd / s"${fir.main}.sv"
+    os.write.over(firFile, fir.serialize)
+    os.write.over(
+      annoJsonFile,
+      firrtl.annotations.JsonProtocol.serializeRecover(annos)
+    )
+    if (runFirtool) {
+      os.proc(
+        "firtool",
+        s"--annotation-file=${annoJsonFile}",
+        s"${firFile}",
+        s"-o",
+        s"${svFile}",
+        "--strip-debug-info",
+        "--verification-flavor=sva",
+        "--extract-test-code"
+      ).call(os.pwd)
+    }
+  }
+
+  def testImpl[M <: RawModule : ClassTag](
+                                           parameter: os.Path,
+                                           runFirtool: Boolean
+                                         ) = {
+    var fir: firrtl.ir.Circuit = null
+    val annos = Seq(
+      new chisel3.stage.phases.Elaborate,
+      new chisel3.stage.phases.Convert
+    ).foldLeft(
+        Seq(
+          chisel3.stage.ChiselGeneratorAnnotation(() =>
+            implicitly[ClassTag[M]].runtimeClass.getConstructors.head
+              .newInstance(parameter)
+              .asInstanceOf[M]
+          )
+        ): firrtl.AnnotationSeq
+      ) { case (annos, stage) => stage.transform(annos) }
       .flatMap {
         case firrtl.stage.FirrtlCircuitAnnotation(circuit) =>
           fir = circuit
