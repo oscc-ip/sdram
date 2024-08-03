@@ -58,9 +58,9 @@ class SDRAMControllerTestbenchMain(
     simulationTime(9, 0) === 0.U
   )
   simulationTime := simulationTime + 1.U
+  dut.io := DontCare
   dut.io.clock := clockGen.clock.asClock
   dut.io.reset := clockGen.reset
-  dut.io := DontCare
 
   when(!initFlag) {
     initFlag := true.B
