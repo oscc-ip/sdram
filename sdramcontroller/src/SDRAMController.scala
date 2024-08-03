@@ -11,6 +11,12 @@ class SDRAMController(val parameter: SDRAMControllerParameter)
     )
     with SerializableModule[SDRAMControllerParameter]
     with SDRAMControllerRTL
-    with Public {
+      with Public
+      with ImplicitClock
+      with ImplicitReset {
   lazy val interface: SDRAMControllerInterface = io
+
+  def implicitClock: Clock = io.clock
+
+  def implicitReset: Reset = io.reset
 }
