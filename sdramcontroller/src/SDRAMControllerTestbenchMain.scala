@@ -4,6 +4,8 @@ import chisel3._
 import chisel3.experimental.{ExtModule, SerializableModuleGenerator}
 import chisel3.util.HasExtModuleInline
 import chisel3.util.circt.dpi.RawUnclockedNonVoidFunctionCall
+import org.chipsalliance.amba.axi4.bundle.AXI4RWIrrevocableVerilog
+import chisel3.experimental.dataview.DataViewable
 
 class SDRAMControllerTestbenchMain(
     val parameter: os.Path
@@ -28,9 +30,9 @@ class SDRAMControllerTestbenchMain(
          |`endif
          |  endfunction;
          |
-         |  import "DPI-C" context function void t1_cosim_init();
+         |  import "DPI-C" context function void cosim_init();
          |  initial begin
-         |    t1_cosim_init();
+         |    cosim_init();
          |    clock = 1'b0;
          |    reset = 1'b1;
          |  end
@@ -61,6 +63,24 @@ class SDRAMControllerTestbenchMain(
   dut.io := DontCare
   dut.io.clock := clockGen.clock.asClock
   dut.io.reset := clockGen.reset
+
+  val agent = Module(
+    new AXI4MasterAgent(
+      AXI4MasterAgentParameter(
+        name = "axi4Probe",
+        axiParameter = dut.io.axi.parameter,
+        outstanding = 4,
+        readPayloadSize = 1,
+        writePayloadSize = 1
+      )
+    )
+  ).suggestName(s"axi4_channel_probe")
+  agent.io.channel <> dut.io.axi.viewAs[AXI4RWIrrevocableVerilog]
+  agent.io.clock := clockGen.clock.asClock
+  agent.io.reset := clockGen.reset
+  agent.io.channelId := 0.U
+  agent.io.gateRead := false.B
+  agent.io.gateWrite := false.B
 
   when(!initFlag) {
     initFlag := true.B
