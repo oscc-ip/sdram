@@ -26,6 +26,16 @@ mill sdramcontroller.run design --run-firtool
 
 Generated Verilog will be placed at `PWD`
 
+# Elaborate Testbench
+
+Use this line to generate the Verilog at `PWD`, based on the config just generated.
+
+```bash
+mill sdramcontroller.run testbench --run-firtool
+```
+
+Generated Verilog will be placed at `PWD`
+
 # Update dependency
 
 ## Build from source dependencies
