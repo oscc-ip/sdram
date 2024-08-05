@@ -64,18 +64,19 @@ class SDRAMControllerTestbenchMain(
   dut.io.clock := clockGen.clock.asClock
   dut.io.reset := clockGen.reset
 
+  val bundle = dut.io.axi.viewAs[AXI4RWIrrevocableVerilog]
   val agent = Module(
     new AXI4MasterAgent(
       AXI4MasterAgentParameter(
         name = "axi4Probe",
-        axiParameter = dut.io.axi.parameter,
+        axiParameter = bundle.parameter,
         outstanding = 4,
         readPayloadSize = 1,
         writePayloadSize = 1
       )
     )
   ).suggestName(s"axi4_channel_probe")
-  agent.io.channel <> dut.io.axi.viewAs[AXI4RWIrrevocableVerilog]
+  agent.io.channel <> bundle
   agent.io.clock := clockGen.clock.asClock
   agent.io.reset := clockGen.reset
   agent.io.channelId := 0.U
