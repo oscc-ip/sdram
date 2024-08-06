@@ -34,14 +34,14 @@ class WritePayload(
                     awUserWidth: Int,
                     wUserWidth: Int
                   ) extends Bundle {
-  val id = UInt(idWidth.W)
+  val id = UInt(math.max(8, idWidth).W)
   val len = UInt(8.W)
   val addr = UInt(addrWidth.W)
   val data = Vec(length, UInt(dataWidth.W))
   // For dataWidth <= 8, align strb to u8 for a simple C-API
   val strb = Vec(length, UInt(math.max(8, dataWidth / 8).W))
-  val wUser = Vec(length, UInt(wUserWidth.W))
-  val awUser = UInt(awUserWidth.W)
+  val wUser = Vec(length, UInt(math.max(8, wUserWidth).W))
+  val awUser = UInt(math.max(8, awUserWidth).W)
   val dataValid = Bool()
   val burst = UInt(8.W)
   val cache = UInt(8.W)
@@ -55,8 +55,8 @@ class WritePayload(
 class ReadAddressPayload(addrWidth: Int, idWidth: Int, userWidth: Int)
   extends Bundle {
   val addr = UInt(addrWidth.W)
-  val id = UInt(idWidth.W)
-  val user = UInt(userWidth.W)
+  val id = UInt(math.max(8, idWidth).W)
+  val user = UInt(math.max(8, userWidth).W)
   val burst = UInt(8.W)
   val cache = UInt(8.W)
   val len = UInt(8.W)
