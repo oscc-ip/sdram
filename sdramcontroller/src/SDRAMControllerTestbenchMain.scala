@@ -7,8 +7,23 @@ import chisel3.util.circt.dpi.RawUnclockedNonVoidFunctionCall
 import org.chipsalliance.amba.axi4.bundle.AXI4RWIrrevocableVerilog
 import chisel3.experimental.dataview.DataViewable
 
+class W9825G6KH extends BlackBox {
+  val io = IO(new Bundle {
+    val Dq_i = Input(UInt(32.W))
+    val Dq_o = Input(UInt(32.W))
+    val Addr = Input(UInt(13.W))
+    val Bs = Input(UInt(2.W))
+    val Clk = Input(Clock())
+    val Cke = Input(Bool())
+    val Cs_n = Input(Bool())
+    val Ras_n = Input(Bool())
+    val We_n = Input(Bool())
+    val Dqm = Input(UInt(4.W))
+  })
+}
+
 class SDRAMControllerTestbenchMain(
-    val parameter: os.Path
+                                    val path: os.Path
 ) extends RawModule
     with ImplicitClock
     with ImplicitReset {
@@ -45,12 +60,14 @@ class SDRAMControllerTestbenchMain(
     val reset = IO(Output(Bool()))
   })
 
+  val parameter = upickle.default.read[SDRAMControllerParameter](os.read(path))
+
   val dut = SerializableModuleGenerator[
     SDRAMController,
     SDRAMControllerParameter
   ](
     classOf[SDRAMController],
-    upickle.default.read[SDRAMControllerParameter](os.read(parameter))
+    parameter
   ).instance()
 
   val simulationTime: UInt = RegInit(0.U(64.W))
@@ -93,6 +110,25 @@ class SDRAMControllerTestbenchMain(
       cf"""{"event":"SimulationStop","reason": ${watchdog},"cycle":${simulationTime}}\n"""
     )
   }
+
+  /** SDRAM <-> DUT */
+  Seq
+    .fill(parameter.sdramParameter.csWidth) {
+      Module(new W9825G6KH).io
+    }
+    .zipWithIndex
+    .foreach { case (bundle, index) =>
+      bundle.Addr := dut.io.sdram.a
+      bundle.Bs := dut.io.sdram.ba
+      bundle.Cke := dut.io.sdram.cke(index).asBool
+      bundle.Clk := dut.io.sdram.ck(index)
+      bundle.Cs_n := dut.io.sdram.cs(index).asBool
+      bundle.Dq_i := dut.io.sdram.dqo
+      bundle.Dq_o := dut.io.sdram.dqi
+      bundle.Dqm := dut.io.sdram.dqm
+      bundle.Ras_n := dut.io.sdram.ras
+      bundle.We_n := dut.io.sdram.we
+    }
 
   override protected def implicitClock: Clock = clockGen.clock.asClock
 
