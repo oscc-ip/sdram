@@ -4,6 +4,7 @@ use tracing::{debug, error, info, trace};
 use crate::dpi::*;
 use crate::svdpi::SvScope;
 use crate::OfflineArgs;
+use std::collections::VecDeque;
 
 struct ShadowMem {
     mem: Vec<u8>,
@@ -106,6 +107,10 @@ pub(crate) struct Driver {
     timeout: u64,
 
     shadow_mem: ShadowMem,
+
+    axi_read_fifo: VecDeque<AxiReadPayload>,
+
+    axi_write_fifo: VecDeque<AxiWritePayload>,
 }
 
 #[cfg(feature = "trace")]
@@ -160,6 +165,8 @@ impl Driver {
             dlen: args.common_args.dlen,
             timeout: args.timeout,
             shadow_mem: ShadowMem::new(),
+            axi_read_fifo: VecDeque::new(),
+            axi_write_fifo: VecDeque::new(),
         };
 
         self_
@@ -170,24 +177,26 @@ impl Driver {
             "axi_read_resp (rdata={rdata}, rid={rid}, rlast={rlast:#x}, \
     rresp={rresp}, ruser={ruser})"
         );
+        self.axi_read_fifo.pop_front();
     }
 
     pub(crate) fn axi_write_done(&mut self, bid: u8, bresp: u8, buser: u8) {
         trace!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
+        self.axi_write_fifo.pop_front();
     }
 
     pub(crate) fn axi_write_ready(&mut self) -> AxiWritePayload {
         trace!("axi_write_ready");
-
-        todo!();
-        // AxiWritePayload { }
+        let payload = AxiWritePayload::random();
+        self.axi_write_fifo.push_back(payload.clone());
+        payload
     }
 
     pub(crate) fn axi_read_ready(&mut self) -> AxiReadPayload {
         trace!("axi_read_ready");
-
-        todo!();
-        // AxiReadPayload { }
+        let payload = AxiReadPayload::random();
+        self.axi_read_fifo.push_back(payload.clone());
+        payload
     }
 
     #[cfg(feature = "trace")]
