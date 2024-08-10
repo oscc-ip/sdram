@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 
 use clap::Parser;
+use rand::Rng;
 use std::ffi::{c_char, c_longlong, c_uchar};
 use std::sync::Mutex;
 use tracing::debug;
@@ -18,6 +19,7 @@ pub type SvBitVecVal = u32;
 
 static DPI_TARGET: Mutex<Option<Box<Driver>>> = Mutex::new(None);
 
+#[derive(Clone, Debug)]
 pub(crate) struct AxiWritePayload {
     pub(crate) id: Vec<u8>,
     pub(crate) len: u8,
@@ -36,6 +38,30 @@ pub(crate) struct AxiWritePayload {
     pub(crate) size: u8,
 }
 
+impl AxiWritePayload {
+    pub(crate) fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        AxiWritePayload {
+            id: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
+            len: rng.gen_range(0..=255),
+            addr: rng.gen_range(0..=255),
+            data: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
+            strb: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
+            wUser: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
+            awUser: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
+            dataValid: true,
+            burst: rng.gen_range(0..=15),
+            cache: rng.gen_range(0..=15),
+            lock: rng.gen_range(0..=1),
+            prot: rng.gen_range(0..=7),
+            qos: rng.gen_range(0..=15),
+            region: rng.gen_range(0..=15),
+            size: rng.gen_range(0..=15),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct AxiReadPayload {
     pub(crate) addr: u8,
     pub(crate) id: u8,
@@ -49,6 +75,26 @@ pub(crate) struct AxiReadPayload {
     pub(crate) region: u8,
     pub(crate) size: u8,
     pub(crate) valid: bool,
+}
+
+impl AxiReadPayload {
+    pub(crate) fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        AxiReadPayload {
+            addr: rng.gen_range(0..=255),
+            id: rng.gen_range(0..=255),
+            user: rng.gen_range(0..=255),
+            burst: rng.gen_range(0..=15),
+            cache: rng.gen_range(0..=15),
+            len: rng.gen_range(0..=255),
+            lock: rng.gen_range(0..=1),
+            prot: rng.gen_range(0..=7),
+            qos: rng.gen_range(0..=15),
+            region: rng.gen_range(0..=15),
+            size: rng.gen_range(0..=15),
+            valid: true,
+        }
+    }
 }
 
 unsafe fn write_to_pointer(dst: *mut u8, data: &[u8]) {
