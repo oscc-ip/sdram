@@ -8,3 +8,8 @@
 /*.json
 /*.fir
 /*.sv
+/*.v
+/*.h
+/simv
+/*.key
+/simv.daidir
