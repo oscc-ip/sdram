@@ -3,7 +3,7 @@
 
 use clap::Parser;
 use rand::Rng;
-use std::ffi::{c_char, c_longlong, c_uchar};
+use std::ffi::*;
 use std::sync::Mutex;
 use tracing::debug;
 
@@ -190,6 +190,8 @@ unsafe extern "C" fn cosim_init() {
 //--------------------------------
 
 mod dpi_export {
+    use std::ffi::*;
+
     extern "C" {
         #[cfg(feature = "trace")]
         /// `export "DPI-C" function dump_wave(input string file)`
