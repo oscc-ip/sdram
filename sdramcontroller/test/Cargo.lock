@@ -126,7 +126,7 @@ checksum = "d3fd119d74b830634cea2a0f58bbd0d54540518a14397557951e79340abc28c0"
 
 [[package]]
 name = "common"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -214,7 +214,7 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "online_dpi"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "clap",
  "common",
