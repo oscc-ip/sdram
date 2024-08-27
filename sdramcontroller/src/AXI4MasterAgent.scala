@@ -1,9 +1,14 @@
 package oscc.sdramcontroller
 
 import chisel3._
-import chisel3.util.circt.dpi.{RawClockedVoidFunctionCall, RawUnclockedNonVoidFunctionCall}
+import chisel3.ltl.AssertProperty
+import chisel3.util.circt.dpi.{
+  RawClockedVoidFunctionCall,
+  RawUnclockedNonVoidFunctionCall
+}
 import chisel3.util.{isPow2, log2Ceil}
-import org.chipsalliance.amba.axi4.bundle.{ARChannel, ARFlowControl, AWChannel, AWFlowControl, AXI4BundleParameter, AXI4ROIrrevocableVerilog, AXI4RWIrrevocableVerilog, AXI4WOIrrevocableVerilog, BChannel, BFlowControl, RChannel, RFlowControl, WChannel, WFlowControl}
+import org.chipsalliance.amba.axi4.bundle._
+import chisel3.ltl.Sequence._
 
 case class AXI4MasterAgentParameter(
     name: String,
@@ -27,13 +32,13 @@ class AXI4MasterAgentInterface(parameter: AXI4MasterAgentParameter)
 }
 
 class WritePayload(
-                    length: Int,
-                    idWidth: Int,
-                    addrWidth: Int,
-                    dataWidth: Int,
-                    awUserWidth: Int,
-                    wUserWidth: Int
-                  ) extends Bundle {
+    length: Int,
+    idWidth: Int,
+    addrWidth: Int,
+    dataWidth: Int,
+    awUserWidth: Int,
+    wUserWidth: Int
+) extends Bundle {
   val id = UInt(math.max(8, idWidth).W)
   val len = UInt(8.W)
   val addr = UInt(addrWidth.W)
@@ -53,7 +58,7 @@ class WritePayload(
 }
 
 class ReadAddressPayload(addrWidth: Int, idWidth: Int, userWidth: Int)
-  extends Bundle {
+    extends Bundle {
   val addr = UInt(addrWidth.W)
   val id = UInt(math.max(8, idWidth).W)
   val user = UInt(math.max(8, userWidth).W)
@@ -114,7 +119,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val awRPtr =
         RegInit(0.U.asTypeOf(UInt(log2Ceil(parameter.outstanding).W)))
       val wRPtr = RegInit(0.U.asTypeOf(UInt(log2Ceil(parameter.outstanding).W)))
-
+      val awCount = RegInit(0.U(32.W))
       // AW
       when(channel.AWREADY && !awFifo(awWPtr).payload.dataValid) {
         awFifo(awWPtr).payload := RawUnclockedNonVoidFunctionCall(
@@ -150,10 +155,12 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       when(awFire) {
         awFifo(awRPtr).addrValid := false.B
         awRPtr := awRPtr + 1.U
+        awCount := awCount + 1.U
       }
 
       // W
       val wFire = channel.WREADY && channel.WVALID
+      val wCount = RegInit(0.U(32.W))
       channel.WDATA := awFifo(wRPtr).payload.data(
         awFifo(wRPtr).index
       )
@@ -168,11 +175,10 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       ).payload.len
       channel.WVALID := awFifo(wRPtr).payload.dataValid
       when(wFire) {
-        when(
-          channel.WLAST
-        ) {
+        when(channel.WLAST) {
           awFifo(wRPtr).payload.dataValid := false.B
           wRPtr := wRPtr + 1.U
+          wCount := wCount + 1.U
         }.otherwise(
           awFifo(wRPtr).index := awFifo(
             wRPtr
@@ -193,6 +199,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
         )
       }
 
+      AssertProperty(BoolSequence(awCount >= wCount))
     }
   }
 
@@ -215,6 +222,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
         RegInit(0.U.asTypeOf(UInt(log2Ceil(parameter.outstanding).W)))
       val arRPtr =
         RegInit(0.U.asTypeOf(UInt(log2Ceil(parameter.outstanding).W)))
+      val arCount = RegInit(0.U(32.W))
 
       // AR
       channel.ARVALID := !arFifo(arWPtr).payload.valid
@@ -237,6 +245,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val arFire = channel.ARREADY && channel.ARVALID
       when(arFire) {
         arRPtr := arRPtr + 1.U
+        arCount := arCount + 1.U
       }
       channel.ARADDR := arFifo(arWPtr).payload.addr
       channel.ARBURST := arFifo(arWPtr).payload.burst
@@ -252,8 +261,10 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
 
       // R
       channel.RREADY := true.B
+      val rCount = RegInit(0.U(32.W))
       val rFire = channel.RREADY && channel.RVALID
       when(rFire) {
+        rCount := rCount + 1.U
         RawClockedVoidFunctionCall(
           s"axi_read_resp_${parameter.name}"
         )(
@@ -266,6 +277,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
           channel.RUSER.asTypeOf(UInt(8.W))
         )
       }
+      AssertProperty(BoolSequence(arCount >= rCount))
     }
   }
 }
