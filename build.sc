@@ -26,6 +26,27 @@ trait Chisel extends millbuild.dependencies.chisel.build.Chisel {
   override def millSourcePath = os.pwd / "dependencies" / "chisel"
 }
 
+object axi4 extends AXI4
+trait AXI4 extends millbuild.dependencies.`chisel-interface`.common.AXI4Module {
+  def scalaVersion = T(deps.scalaVer)
+
+  def chiselModule = Some(chisel)
+  def chiselPluginJar = T(Some(chisel.pluginModule.jar()))
+  def chiselIvy = None
+  def chiselPluginIvy = None
+  def mainargsIvy: Dep = deps.mainargs
+}
+
+object dwbb extends DWBB
+trait DWBB extends millbuild.dependencies.`chisel-interface`.common.DWBBModule {
+  def scalaVersion = T(deps.scalaVer)
+
+  def chiselModule = Some(chisel)
+  def chiselPluginJar = T(Some(chisel.pluginModule.jar()))
+  def chiselIvy = None
+  def chiselPluginIvy = None
+}
+
 object gcd extends GCD
 trait GCD extends millbuild.common.HasChisel with ScalafmtModule {
   def scalaVersion = T(deps.scalaVer)
