@@ -1,7 +1,7 @@
 {
     "chisel": {
         "cargoLocks": null,
-        "date": "2024-08-15",
+        "date": "2024-08-28",
         "extract": null,
         "name": "chisel",
         "passthru": null,
@@ -13,10 +13,30 @@
             "name": null,
             "owner": "chipsalliance",
             "repo": "chisel",
-            "rev": "f347914dee389cebbe48ac4ef2e350e5ac1d267a",
-            "sha256": "sha256-4sdVOhXt2Y4pmzLpImi+jvpi2exJ5f0vuN+iLnueESk=",
+            "rev": "4c0c194710e75dd022c1c1eefa38734ccd5c6cd6",
+            "sha256": "sha256-kOI8S9YX7nRsJ1vUPeuXZJfwVuE6hgKjCAJ+HDSkk4Y=",
             "type": "github"
         },
-        "version": "f347914dee389cebbe48ac4ef2e350e5ac1d267a"
+        "version": "4c0c194710e75dd022c1c1eefa38734ccd5c6cd6"
+    },
+    "chisel-interface": {
+        "cargoLocks": null,
+        "date": "2024-05-22",
+        "extract": null,
+        "name": "chisel-interface",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "deepClone": false,
+            "fetchSubmodules": false,
+            "leaveDotGit": false,
+            "name": null,
+            "owner": "chipsalliance",
+            "repo": "chisel-interface",
+            "rev": "0d97ca7872f69cfcfb9ae1d72059bd62be606322",
+            "sha256": "sha256-R0F6AsxoKyFE334bF567er+InzQQMp9bLTlal/SgVhs=",
+            "type": "github"
+        },
+        "version": "0d97ca7872f69cfcfb9ae1d72059bd62be606322"
     }
 }
