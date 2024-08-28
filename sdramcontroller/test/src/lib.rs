@@ -9,36 +9,37 @@ pub mod svvpi;
 
 #[derive(Parser)]
 pub(crate) struct OfflineArgs {
-  #[command(flatten)]
-  pub common_args: CommonArgs,
+    #[command(flatten)]
+    pub common_args: CommonArgs,
 
-  #[cfg(feature = "trace")]
-  #[arg(long)]
-  pub wave_path: String,
+    #[cfg(feature = "trace")]
+    #[arg(long)]
+    pub wave_path: String,
 
-  #[cfg(feature = "trace")]
-  #[arg(long, default_value = "")]
-  pub dump_range: String,
+    #[cfg(feature = "trace")]
+    #[arg(long, default_value = "")]
+    pub dump_range: String,
 
-  #[arg(long, default_value_t = 1000000)]
-  pub timeout: u64,
+    #[arg(long, default_value_t = 1000000)]
+    pub timeout: u64,
 }
 
 // keep in sync with TestBench.ClockGen
 pub const CYCLE_PERIOD: u64 = 20;
+pub const AXI_SIZE: u8 = 32;
 
 /// get cycle
 #[cfg(any(feature = "sv2023", feature = "svvpi"))]
 pub fn get_t() -> u64 {
-  get_time() / CYCLE_PERIOD
+    get_time() / CYCLE_PERIOD
 }
 
 #[cfg(feature = "sv2023")]
 pub fn get_time() -> u64 {
-  svdpi::get_time()
+    svdpi::get_time()
 }
 
 #[cfg(all(not(feature = "sv2023"), feature = "svvpi"))]
 pub fn get_time() -> u64 {
-  svvpi::get_time()
+    svvpi::get_time()
 }

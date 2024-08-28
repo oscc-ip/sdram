@@ -9,7 +9,7 @@ use tracing::debug;
 
 use crate::drive::Driver;
 use crate::svdpi::SvScope;
-use crate::OfflineArgs;
+use crate::{OfflineArgs, AXI_SIZE};
 
 pub type SvBitVecVal = u32;
 
@@ -18,16 +18,17 @@ pub type SvBitVecVal = u32;
 // --------------------------
 
 static DPI_TARGET: Mutex<Option<Box<Driver>>> = Mutex::new(None);
+static awid: Mutex<u8> = Mutex::new(0);
 
 #[derive(Clone, Debug)]
 pub(crate) struct AxiWritePayload {
-    pub(crate) id: Vec<u8>,
+    pub(crate) id: u8,
     pub(crate) len: u8,
-    pub(crate) addr: u8,
-    pub(crate) data: Vec<u8>,
+    pub(crate) addr: u32,
+    pub(crate) data: Vec<u32>,
     pub(crate) strb: Vec<u8>,
-    pub(crate) wUser: Vec<u8>,
-    pub(crate) awUser: Vec<u8>,
+    pub(crate) wUser: Vec<u32>,
+    pub(crate) awUser: u32,
     pub(crate) dataValid: bool,
     pub(crate) burst: u8,
     pub(crate) cache: u8,
@@ -41,31 +42,44 @@ pub(crate) struct AxiWritePayload {
 impl AxiWritePayload {
     pub(crate) fn random() -> Self {
         let mut rng = rand::thread_rng();
+        let burst_type = rng.gen_range(0..=2);
+        let burst_length = if burst_type == 2 {
+            rng.gen_range(2..=8) * 2
+        } else {
+            rng.gen_range(0..=15)
+        };
+        let burst_size: u8 = rng.gen_range(0..=7 - AXI_SIZE.leading_zeros()) as u8;
+        let bytes_number = 1 << burst_size;
+        *awid.lock().unwrap() += 1;
         AxiWritePayload {
-            id: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
-            len: rng.gen_range(0..=255),
-            addr: rng.gen_range(0..=255),
-            data: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
-            strb: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
-            wUser: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
-            awUser: (0..8).map(|_| rng.gen_range(0..=255)).collect(),
+            id: *awid.lock().unwrap(),
+            len: burst_length,
+            addr: rng.gen_range(0..=u32::MAX) / bytes_number * bytes_number,
+            data: (0..burst_length)
+                .map(|_| rng.gen_range(0..=u32::MAX))
+                .collect(),
+            strb: (0..burst_length).map(|_| (1 << burst_size) - 1).collect(),
+            wUser: (0..burst_length)
+                .map(|_| rng.gen_range(0..=u32::MAX))
+                .collect(),
+            awUser: rng.gen_range(0..=u32::MAX),
             dataValid: true,
-            burst: rng.gen_range(0..=15),
-            cache: rng.gen_range(0..=15),
-            lock: rng.gen_range(0..=1),
-            prot: rng.gen_range(0..=7),
-            qos: rng.gen_range(0..=15),
-            region: rng.gen_range(0..=15),
-            size: rng.gen_range(0..=15),
+            burst: burst_type,
+            cache: 0,
+            lock: 0,
+            prot: 0,
+            qos: 0,
+            region: 0,
+            size: burst_size,
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct AxiReadPayload {
-    pub(crate) addr: u8,
+    pub(crate) addr: u32,
     pub(crate) id: u8,
-    pub(crate) user: u8,
+    pub(crate) user: u32,
     pub(crate) burst: u8,
     pub(crate) cache: u8,
     pub(crate) len: u8,
@@ -92,6 +106,22 @@ impl AxiReadPayload {
             qos: rng.gen_range(0..=15),
             region: rng.gen_range(0..=15),
             size: rng.gen_range(0..=15),
+            valid: true,
+        }
+    }
+    pub(crate) fn from_write_payload(payload: AxiWritePayload) -> Self {
+        AxiReadPayload {
+            addr: payload.addr,
+            id: payload.id,
+            user: payload.awUser,
+            burst: payload.burst,
+            cache: payload.cache,
+            len: payload.len,
+            lock: payload.lock,
+            prot: payload.prot,
+            qos: payload.qos,
+            region: payload.region,
+            size: payload.size,
             valid: true,
         }
     }

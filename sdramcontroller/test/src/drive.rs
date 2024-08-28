@@ -3,8 +3,9 @@ use tracing::{debug, error, info, trace};
 
 use crate::dpi::*;
 use crate::svdpi::SvScope;
-use crate::OfflineArgs;
+use crate::{OfflineArgs, AXI_SIZE};
 use std::collections::VecDeque;
+use std::thread::current;
 
 struct ShadowMem {
     mem: Vec<u8>,
@@ -16,74 +17,131 @@ impl ShadowMem {
             mem: vec![0; MEM_SIZE],
         }
     }
-    pub fn apply_writes(&mut self) {
-        todo!();
-    }
 
-    pub fn read_mem(&self, addr: u32, size: u32) -> &[u8] {
-        let start = addr as usize;
-        let end = (addr + size) as usize;
-        &self.mem[start..end]
+    fn is_addr_align(&self, addr: u32, size: u8) -> bool {
+        let bytes_number = 1 << size;
+        let aligned_addr = addr / bytes_number * bytes_number;
+        addr == aligned_addr
     }
 
     // size: 1 << arsize
-    // bus_size: AXI bus width in bytes
     // return: Vec<u8> with len=bus_size
-    // if size < bus_size, the result is padded due to AXI narrow transfer rules
-    pub fn read_mem_axi(&self, addr: u32, size: u32, bus_size: u32) -> Vec<u8> {
+    pub fn read_mem_axi(&self, payload: AxiReadPayload) -> Vec<u8> {
+        let bytes_number: u32 = 1 << payload.size();
+
+        let transfer_count: u32 = (payload.len + 1) as u32;
+
+        let mut lower_boundary = 0;
+        let mut upper_boundary = 0;
+
+        let mut data: Vec<u8> = vec![];
+
+        if payload.burst == 2 {
+            lower_boundary =
+                payload.addr / (bytes_number * transfer_count) * (bytes_number * transfer_count);
+            upper_boundary = lower_boundary + bytes_number * transfer_count;
+            assert!(
+                payload.len == 2 || payload.len == 4 || payload.len == 8 || payload.len == 16,
+                "unsupported burst len"
+            );
+        }
+
+        let mut current_addr = payload.addr;
         assert!(
-            addr % size == 0 && bus_size % size == 0,
-            "unaligned access addr={addr:#x} size={size}B dlen={bus_size}B"
+            self.is_addr_align(payload.addr, payload.size),
+            "address is unaligned!"
         );
 
-        let data = self.read_mem(addr, size);
-        if size < bus_size {
-            // narrow
-            let mut data_padded = vec![0; bus_size as usize];
-            let start = (addr % bus_size) as usize;
-            let end = start + data.len();
-            data_padded[start..end].copy_from_slice(data);
+        for _ in 0..transfer_count {
+            data.extend_from_slice(&self.mem[current_addr..current_addr + bytes_number]);
 
-            data_padded
-        } else {
-            // normal
-            data.to_vec()
+            current_addr = match payload.burst {
+                Some(0) => current_addr,                // FIXED
+                Some(1) => current_addr + bytes_number, // INCR
+                Some(2) => {
+                    if current_addr + bytes_number >= upper_boundary {
+                        lower_boundary
+                    } else {
+                        current_addr + bytes_number
+                    }
+                } // WRAP
+                _ => {
+                    panic!("unknown burst type: {:?}", payload.burst);
+                }
+            }
         }
+        data
     }
 
     // size: 1 << awsize
     // bus_size: AXI bus width in bytes
     // masks: write strokes, len=bus_size
     // data: write data, len=bus_size
-    pub fn write_mem_axi(
-        &mut self,
-        addr: u32,
-        size: u32,
-        bus_size: u32,
-        masks: &[bool],
-        data: &[u8],
-    ) {
+    pub fn write_mem_axi(&mut self, payload: AxiWritePayload) {
+        let transfer_count: u32 = (payload.len + 1) as u32;
+
         assert!(
-            addr % size == 0 && bus_size % size == 0,
-            "unaligned write access addr={addr:#x} size={size}B dlen={bus_size}B"
+            transfer_count == payload.data.len() as u32
+                && transfer_count == payload.strb.len() as u32,
+            "malformed payload: transfer_count = {:?}, payload.data.len = {:?}, payload.strb.len = {:?}",
+            transfer_count, payload.data.len(), payload.strb.len(),
         );
 
-        // handle strb=0 AXI payload
-        if !masks.iter().any(|&x| x) {
-            trace!("Mask 0 write detect");
-            return;
+        let bytes_number: u32 = 1 << payload.size();
+
+        let mut lower_boundary = 0;
+        let mut upper_boundary = 0;
+        if payload.burst == 2 {
+            lower_boundary =
+                payload.addr / (bytes_number * transfer_count) * (bytes_number * transfer_count);
+            upper_boundary = lower_boundary + bytes_number * transfer_count;
+            assert!(
+                payload.len == 2 || payload.len == 4 || payload.len == 8 || payload.len == 16,
+                "unsupported burst len"
+            );
         }
 
-        // TODO: we do not check strobe is compatible with (addr, awsize)
-        let addr_align = addr & ((!bus_size) + 1);
+        let mut current_addr = payload.addr;
+        assert!(
+            self.is_addr_align(payload.addr, payload.size),
+            "address is unaligned!"
+        );
 
-        let bus_size = bus_size as usize;
-        assert_eq!(bus_size, masks.len());
-        assert_eq!(bus_size, data.len());
+        for item_idx in 0..transfer_count {
+            if payload.strb[item_idx] == 0 {
+                continue;
+            }
 
-        for i in 0..bus_size {
-            if masks[i] {
-                self.mem[addr_align as usize + i] = data[i];
+            assert_eq!(
+                payload.strb[item_idx].count_ones(),
+                bytes_number,
+                "the number of will write bytes is not equal"
+            );
+
+            let mut write_count = 0;
+
+            for byte_idx in 0..AXI_SIZE / 8 {
+                let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1;
+                if byte_mask {
+                    self.mem[current_addr + write_count] =
+                        payload.data[byte_idx as usize] >> (byte_idx * 8) & 0xff;
+                    write_count += 1;
+                }
+            }
+
+            current_addr = match payload.burst {
+                Some(0) => current_addr,                // FIXED
+                Some(1) => current_addr + bytes_number, // INCR
+                Some(2) => {
+                    if current_addr + bytes_number >= upper_boundary {
+                        lower_boundary
+                    } else {
+                        current_addr + bytes_number
+                    }
+                } // WRAP
+                _ => {
+                    panic!("unknown burst type: {:?}", payload.burst);
+                }
             }
         }
     }
@@ -108,9 +166,13 @@ pub(crate) struct Driver {
 
     shadow_mem: ShadowMem,
 
-    axi_read_fifo: VecDeque<AxiReadPayload>,
+    axi_write_done_fifo: VecDeque<AxiWritePayload>,
 
     axi_write_fifo: VecDeque<AxiWritePayload>,
+
+    axi_read_fifo: VecDeque<AxiReadPayload>,
+
+    axi_read_buffer: Vec<u8>,
 }
 
 #[cfg(feature = "trace")]
@@ -166,7 +228,9 @@ impl Driver {
             timeout: args.timeout,
             shadow_mem: ShadowMem::new(),
             axi_read_fifo: VecDeque::new(),
+            axi_write_done_fifo: VecDeque::new(),
             axi_write_fifo: VecDeque::new(),
+            axi_read_buffer: Vec::new(),
         };
 
         self_
@@ -177,24 +241,37 @@ impl Driver {
             "axi_read_resp (rdata={rdata}, rid={rid}, rlast={rlast:#x}, \
     rresp={rresp}, ruser={ruser})"
         );
-        self.axi_read_fifo.pop_front();
+        self.axi_read_buffer.extend_from_slice(&rdata.to_le_bytes());
+        if rlast {
+            let payload = self.axi_read_fifo.pop_front().unwrap();
+            let compare = self.shadow_mem.read_mem_axi(payload);
+            assert_eq!(
+                compare, self.axi_read_buffer,
+                "compare failed: {:?} -> {:?}",
+                self.axi_read_buffer, compare
+            );
+            self.axi_read_buffer.clear();
+        }
     }
 
     pub(crate) fn axi_write_done(&mut self, bid: u8, bresp: u8, buser: u8) {
         trace!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
-        self.axi_write_fifo.pop_front();
+        let payload = self.axi_write_fifo.pop_front().unwrap();
+        self.axi_write_done_fifo.push_back(payload);
     }
 
     pub(crate) fn axi_write_ready(&mut self) -> AxiWritePayload {
         trace!("axi_write_ready");
         let payload = AxiWritePayload::random();
         self.axi_write_fifo.push_back(payload.clone());
+        self.shadow_mem.write_mem_axi(payload.clone());
         payload
     }
 
     pub(crate) fn axi_read_ready(&mut self) -> AxiReadPayload {
         trace!("axi_read_ready");
-        let payload = AxiReadPayload::random();
+        let payload =
+            AxiReadPayload::from_write_payload(self.axi_write_done_fifo.pop_front().unwrap());
         self.axi_read_fifo.push_back(payload.clone());
         payload
     }
