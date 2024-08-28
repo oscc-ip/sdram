@@ -1,0 +1,15 @@
+{
+    "testVerbatimParameter": {
+        "useAsyncReset": false,
+        "initFunctionName": "gcd_init",
+        "dumpFunctionName": "dump_wave",
+        "clockFlipTick": 1,
+        "resetFlipTick": 100
+    },
+    "gcdParameter": {
+        "width": 16,
+        "useAsyncReset": false
+    },
+    "timeout": 5000,
+    "testSize": 100
+}
