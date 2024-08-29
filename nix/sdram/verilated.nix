@@ -27,7 +27,7 @@ stdenv.mkDerivation {
       -O1 \
       --main \
       --exe \
-      --cc -f filelist.f --top GCDTestBench ${dpi-lib}/lib/libgcdemu.a
+      --cc -f filelist.f --top SDRAMTestBench ${dpi-lib}/lib/libsdramemu.a
 
     echo "[nix] building verilated C lib"
 
@@ -37,7 +37,7 @@ stdenv.mkDerivation {
 
     # We can't use -C here because the Makefile is generated with relative path
     cd obj_dir
-    make -j "$NIX_BUILD_CORES" -f VGCDTestBench.mk VGCDTestBench
+    make -j "$NIX_BUILD_CORES" -f VSDRAMTestBench.mk VSDRAMTestBench
 
     runHook postBuild
   '';
@@ -48,7 +48,7 @@ stdenv.mkDerivation {
     mkdir -p $out/{include,lib,bin}
     cp *.h $out/include
     cp *.a $out/lib
-    cp VGCDTestBench $out/bin
+    cp VSDRAMTestBench $out/bin
 
     runHook postInstall
   '';

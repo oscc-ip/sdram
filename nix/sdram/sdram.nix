@@ -12,7 +12,7 @@
 
 let
   self = stdenv.mkDerivation rec {
-    name = "gcd";
+    name = "sdram";
 
     src = with lib.fileset;
       toSource {
@@ -20,7 +20,7 @@ let
         fileset = unions [
           ./../../build.sc
           ./../../common.sc
-          ./../../gcd
+          ./../../sdram
           ./../../elaborator
         ];
       };
@@ -79,7 +79,7 @@ let
 
       mkdir -p $elaborator/bin
       makeWrapper ${jdk21}/bin/java $elaborator/bin/elaborator \
-        --add-flags "--enable-preview -Djava.library.path=${circt-full}/lib -cp $out/share/java/elaborator.jar org.chipsalliance.gcd.elaborator.${target}"
+        --add-flags "--enable-preview -Djava.library.path=${circt-full}/lib -cp $out/share/java/elaborator.jar org.chipsalliance.sdram.elaborator.${target}"
     '';
   };
 in self

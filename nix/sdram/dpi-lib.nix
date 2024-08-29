@@ -6,13 +6,13 @@
 
 rustPlatform.buildRustPackage rec {
   name = "dpi-lib";
-  src = ./../../gcdemu;
+  src = ./../../sdramemu;
   cargoHash = "sha256-soOva+RFpbA74zyoOIms0G6HLt7dpYcpatsBQSI3hsM=";
   buildFeatures = lib.optionals sv2023 [ "sv2023" ]
     ++ lib.optionals vpi [ "vpi" ] ++ lib.optionals enable-trace [ "trace" ];
 
   env = {
-    DESIGN_DATA_WIDTH = tbConfig.gcdParameter.width;
+    DESIGN_DATA_WIDTH = tbConfig.sdramParameter.width;
     DESIGN_TIMEOUT = tbConfig.timeout;
     DESIGN_TEST_SIZE = tbConfig.testSize;
     CLOCK_FLIP_TIME = tbConfig.testVerbatimParameter.clockFlipTick * timescale;

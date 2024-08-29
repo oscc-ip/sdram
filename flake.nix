@@ -20,14 +20,15 @@
           overlays = [ overlay ];
           inherit system;
         };
-      in {
+      in
+      {
         formatter = pkgs.nixpkgs-fmt;
         legacyPackages = pkgs;
         devShells.default = pkgs.mkShell ({
-          inputsFrom = [ pkgs.gcd.gcd-compiled pkgs.gcd.tb-dpi-lib ];
+          inputsFrom = [ pkgs.sdram.sdram-compiled pkgs.sdram.tb-dpi-lib ];
           nativeBuildInputs = [ pkgs.cargo pkgs.rustfmt pkgs.rust-analyzer ];
           RUST_SRC_PATH =
             "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
-        } // pkgs.gcd.tb-dpi-lib.env);
+        } // pkgs.sdram.tb-dpi-lib.env);
       });
 }

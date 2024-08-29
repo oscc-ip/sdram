@@ -3,9 +3,10 @@
 
 final: prev: {
   espresso = final.callPackage ./pkgs/espresso.nix { };
-  mill = let jre = final.jdk21;
-  in (prev.mill.override { inherit jre; }).overrideAttrs
-  (_: { passthru = { inherit jre; }; });
+  mill =
+    let jre = final.jdk21;
+    in (prev.mill.override { inherit jre; }).overrideAttrs
+      (_: { passthru = { inherit jre; }; });
   fetchMillDeps = final.callPackage ./pkgs/mill-builder.nix { };
   circt-full = final.callPackage ./pkgs/circt-full.nix { };
   add-determinism =
@@ -23,5 +24,5 @@ final: prev: {
 
   projectDependencies = final.callPackage ./pkgs/project-dependencies.nix { };
 
-  gcd = final.callPackage ./gcd { };
+  sdram = final.callPackage ./sdram { };
 }

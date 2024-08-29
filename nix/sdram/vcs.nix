@@ -33,8 +33,8 @@ stdenv.mkDerivation {
       } \
       -file filelist.f \
       -assert enable_diag \
-      ${dpi-lib}/lib/libgcdemu.a \
-      -o gcd-vcs-simulator
+      ${dpi-lib}/lib/libsdramemu.a \
+      -o sdram-vcs-simulator
 
     runHook postBuild
   '';
@@ -55,17 +55,17 @@ stdenv.mkDerivation {
     runHook preInstall
 
     mkdir -p $out/bin $out/lib
-    cp gcd-vcs-simulator $out/lib
-    cp -r gcd-vcs-simulator.daidir $out/lib
+    cp sdram-vcs-simulator $out/lib
+    cp -r sdram-vcs-simulator.daidir $out/lib
 
     # We need to carefully handle string escape here, so don't use makeWrapper
-    tee $out/bin/gcd-vcs-simulator <<EOF
+    tee $out/bin/sdram-vcs-simulator <<EOF
     #!${bash}/bin/bash
-    export LD_LIBRARY_PATH="$out/lib/gcd-vcs-simulator.daidir:\$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="$out/lib/sdram-vcs-simulator.daidir:\$LD_LIBRARY_PATH"
     _argv="\$@"
-    ${vcs-fhs-env}/bin/vcs-fhs-env -c "$out/lib/gcd-vcs-simulator \$_argv"
+    ${vcs-fhs-env}/bin/vcs-fhs-env -c "$out/lib/sdram-vcs-simulator \$_argv"
     EOF
-    chmod +x $out/bin/gcd-vcs-simulator
+    chmod +x $out/bin/sdram-vcs-simulator
 
     runHook postInstall
   '';
