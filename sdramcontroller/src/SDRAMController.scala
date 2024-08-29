@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2024 Jiuyang Liu <liu@jiuyang.me>
+// SPDX-FileCopyrightText: 2024 Beijing Institute of Open Source Chip
 package oscc.sdramcontroller
 
 import chisel3._

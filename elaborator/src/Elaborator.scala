@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 // SPDX-FileCopyrightText: 2024 Jiuyang Liu <liu@jiuyang.me>
-package org.chipsalliance.gcd.elaborator
+package org.chipsalliance.chisel.elaborator
 
 import chisel3.RawModule
 import chisel3.experimental.{SerializableModule, SerializableModuleGenerator, SerializableModuleParameter}
