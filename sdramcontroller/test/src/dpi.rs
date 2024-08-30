@@ -6,6 +6,7 @@ use rand::Rng;
 use std::ffi::*;
 use std::sync::Mutex;
 use tracing::debug;
+use bytemuck::cast_slice;
 
 use crate::drive::Driver;
 use crate::svdpi::SvScope;
@@ -137,7 +138,7 @@ unsafe fn fill_axi_read_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiR
 unsafe fn fill_axi_write_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiWritePayload) {
     let data_len = 256 * (dlen / 8) as usize;
     assert!(payload.data.len() <= data_len);
-    write_to_pointer(dst as *mut u8, &payload.data);
+    write_to_pointer(dst as *mut u8, cast_slice(&payload.data));
 }
 
 //----------------------
