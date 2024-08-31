@@ -16,12 +16,13 @@ mill mill.bsp.BSP/install
 
 Use this line to generate a json config at `PWD`, you can config the parameter on the command-line.
 ```bash
-mill sdramcontroller.run config --idWidth 4 --dataWidth 32 --addrWidth 32 --csWidth 4
+nix build .#sdram.sdram-compiled.elaborator
+./result-elaborator/bin/elaborator config --idWidth 4 --dataWidth 32 --addrWidth 32 --csWidth 4
 ```
 
 Use this line to generate the Verilog at `PWD`, based on the config just generated.
 ```bash
-mill sdramcontroller.run design --run-firtool
+nix build .#sdram.rtl
 ```
 
 Generated Verilog will be placed at `PWD`
@@ -40,7 +41,7 @@ Generated Verilog will be placed at `PWD`
 
 ## Build from source dependencies
 ```bash
-pushd nix && nix run nixpkgs#nvfetcher && popd
+pushd nix/pkgs/dependencies && nix run nixpkgs#nvfetcher && popd
 ```
 
 ## Other dependencies

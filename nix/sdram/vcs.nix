@@ -25,6 +25,12 @@ stdenv.mkDerivation {
       -sverilog \
       -full64 \
       -timescale=1ns/1ps \
+      +v2k \
+      -sverilog \
+      -Mupdate \
+      +define+DUMP_FSDB \
+      -debug_acc+all \
+      -debug_region+cell+encrypt \
       -P $VERDI_HOME/share/PLI/VCS/LINUX64/novas.tab $VERDI_HOME/share/PLI/VCS/LINUX64/pli.a \
       ${
         lib.optionalString dpi-lib.enable-trace ''

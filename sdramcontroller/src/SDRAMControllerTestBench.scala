@@ -1,17 +1,27 @@
 package oscc.sdramcontroller
 
 import chisel3._
-import chisel3.experimental.hierarchy.{Instance, Instantiate, instantiable, public}
+import chisel3.experimental.hierarchy.{instantiable, public, Instance, Instantiate}
 import chisel3.experimental.{SerializableModule, SerializableModuleParameter}
 import chisel3.properties.{Class, Property}
-import chisel3.util.HasExtModuleInline
+import chisel3.util.{Counter, HasExtModuleInline}
+import chisel3.util.circt.dpi.{RawClockedNonVoidFunctionCall, RawUnclockedNonVoidFunctionCall}
+import chisel3.experimental.dataview.DataViewable
+
+import scala.util.chaining._
+import org.chipsalliance.amba.axi4.bundle.AXI4RWIrrevocableVerilog
+import org.chipsalliance.amba.axi4.bundle.AXI4RWIrrevocable.viewVerilog
 
 object SDRAMControllerTestBenchParameter {
   implicit def rwP: upickle.default.ReadWriter[SDRAMControllerTestBenchParameter] =
     upickle.default.macroRW
 }
 
-case class SDRAMControllerTestBenchParameter(sdramControllerParameter: SDRAMControllerParameter, testVerbatimParameter: TestVerbatimParameter) extends SerializableModuleParameter
+case class SDRAMControllerTestBenchParameter(
+  sdramControllerParameter: SDRAMControllerParameter,
+  testVerbatimParameter:    TestVerbatimParameter,
+  timeout:                  Int)
+    extends SerializableModuleParameter
 
 class W9825G6KHInterface extends Bundle {
   val Dq_i = Input(UInt(32.W))
@@ -30,29 +40,34 @@ class W9825G6KHInterface extends Bundle {
 @public
 class W9825G6KH extends FixedIOExtModule(new W9825G6KHInterface)
 
-class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter) extends RawModule
-  with SerializableModule[SDRAMControllerTestBenchParameter]
-  with ImplicitClock
-  with ImplicitReset {
-  val verbatim: Instance[TestVerbatim] =  Instantiate(new TestVerbatim(parameter.testVerbatimParameter))
-  val dut: Instance[SDRAMController] = Instantiate(new SDRAMController(parameter.sdramControllerParameter))
-  val agent = Instantiate(new AXI4MasterAgent(AXI4MasterAgentParameter(
-    name = "axi4Probe",
-    axiParameter = dut.io.axi.parameter,
-    outstanding = 4,
-    readPayloadSize = 1,
-    writePayloadSize = 1
-  ))).suggestName(s"axi4_channel_probe")
+class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter)
+    extends RawModule
+    with SerializableModule[SDRAMControllerTestBenchParameter]
+    with ImplicitClock
+    with ImplicitReset {
+  val verbatim: Instance[TestVerbatim] = Instantiate(new TestVerbatim(parameter.testVerbatimParameter))
+  val dut:      Instance[SDRAMController] = Instantiate(new SDRAMController(parameter.sdramControllerParameter))
+  val agent = Instantiate(
+    new AXI4MasterAgent(
+      AXI4MasterAgentParameter(
+        name = "axi4Probe",
+        axiParameter = dut.io.axi.parameter,
+        outstanding = 4,
+        readPayloadSize = 1,
+        writePayloadSize = 1
+      )
+    )
+  ).tap(_.suggestName(s"axi4_channel_probe"))
   val w9825g6kb = Instantiate(new W9825G6KH)
 
   val initFlag = RegInit(false.B)
   dut.io := DontCare
-  dut.io.clock := verbatim.io.clock
-  dut.io.reset := verbatim.io.reset
+  dut.io.clock := implicitClock
+  dut.io.reset := implicitReset
 
-  agent.io.channel <> bundle
-  agent.io.clock := clockGen.clock.asClock
-  agent.io.reset := clockGen.reset
+  agent.io.channel <> dut.io.axi.viewAs[AXI4RWIrrevocableVerilog]
+  agent.io.clock := implicitClock
+  agent.io.reset := implicitReset
   agent.io.channelId := 0.U
   agent.io.gateRead := false.B
   agent.io.gateWrite := false.B
@@ -61,6 +76,13 @@ class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter)
     initFlag := true.B
   }
   val hasBeenReset = RegNext(true.B, false.B)
+
+  // For each timeout ticks, check it
+  val (_, callWatchdog) = Counter(true.B, parameter.timeout / 2)
+  val watchdogCode = RawUnclockedNonVoidFunctionCall("cosim_watchdog", UInt(8.W))(callWatchdog)
+  when(watchdogCode =/= 0.U) {
+    stop(cf"""{"event":"SimulationStop","reason": ${watchdogCode}}\n""")
+  }
 
   /** SDRAM <-> DUT */
   Seq
@@ -95,12 +117,12 @@ object TestVerbatimParameter {
 }
 
 case class TestVerbatimParameter(
-                                  useAsyncReset:    Boolean,
-                                  initFunctionName: String,
-                                  dumpFunctionName: String,
-                                  clockFlipTick:    Int,
-                                  resetFlipTick:    Int)
-  extends SerializableModuleParameter
+  useAsyncReset:    Boolean,
+  initFunctionName: String,
+  dumpFunctionName: String,
+  clockFlipTick:    Int,
+  resetFlipTick:    Int)
+    extends SerializableModuleParameter
 
 @instantiable
 class TestVerbatimOM(parameter: TestVerbatimParameter) extends Class {
@@ -127,7 +149,7 @@ class TestVerbatimInterface(parameter: TestVerbatimParameter) extends Bundle {
 
 @instantiable
 class TestVerbatim(parameter: TestVerbatimParameter)
-  extends FixedIOExtModule(new TestVerbatimInterface(parameter))
+    extends FixedIOExtModule(new TestVerbatimInterface(parameter))
     with HasExtModuleInline {
   setInline(
     s"$desiredName.sv",

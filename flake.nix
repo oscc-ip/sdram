@@ -20,8 +20,7 @@
           overlays = [ overlay ];
           inherit system;
         };
-      in
-      {
+      in {
         formatter = pkgs.nixpkgs-fmt;
         legacyPackages = pkgs;
         devShells.default = pkgs.mkShell ({

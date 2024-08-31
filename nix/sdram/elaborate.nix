@@ -15,7 +15,7 @@ stdenvNoCC.mkDerivation {
   buildCommand = ''
     mkdir -p elaborate $out
 
-    ${elaborator}/bin/elaborator design --parameter $src/${elaborator.elaborateTarget}.json --target-dir elaborate
+    ${elaborator}/bin/elaborator design --parameter $src/${elaborator.elaborateTarget}Main.json --target-dir elaborate
 
     firtool elaborate/*.fir \
       --annotation-file elaborate/*.anno.json \

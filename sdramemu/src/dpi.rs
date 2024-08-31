@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
 
+use bytemuck::cast_slice;
 use clap::Parser;
 use rand::Rng;
 use std::ffi::*;
@@ -8,7 +9,7 @@ use std::sync::Mutex;
 use tracing::debug;
 
 use crate::drive::Driver;
-use crate::svdpi::SvScope;
+use svdpi::SvScope;
 use crate::{OfflineArgs, AXI_SIZE};
 
 pub type SvBitVecVal = u32;
@@ -18,7 +19,7 @@ pub type SvBitVecVal = u32;
 // --------------------------
 
 static DPI_TARGET: Mutex<Option<Box<Driver>>> = Mutex::new(None);
-static awid: Mutex<u8> = Mutex::new(0);
+static AWID: Mutex<u8> = Mutex::new(0);
 
 #[derive(Clone, Debug)]
 pub(crate) struct AxiWritePayload {
@@ -50,9 +51,9 @@ impl AxiWritePayload {
         };
         let burst_size: u8 = rng.gen_range(0..=7 - AXI_SIZE.leading_zeros()) as u8;
         let bytes_number = 1 << burst_size;
-        *awid.lock().unwrap() += 1;
+        *AWID.lock().unwrap() += 1;
         AxiWritePayload {
-            id: *awid.lock().unwrap(),
+            id: *AWID.lock().unwrap(),
             len: burst_length,
             addr: rng.gen_range(0..=u32::MAX) / bytes_number * bytes_number,
             data: (0..burst_length)
@@ -137,7 +138,7 @@ unsafe fn fill_axi_read_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiR
 unsafe fn fill_axi_write_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiWritePayload) {
     let data_len = 256 * (dlen / 8) as usize;
     assert!(payload.data.len() <= data_len);
-    write_to_pointer(dst as *mut u8, &payload.data);
+    write_to_pointer(dst as *mut u8, cast_slice(&payload.data));
 }
 
 //----------------------
@@ -198,6 +199,14 @@ unsafe extern "C" fn axi_read_ready_axi4Probe(payload: *mut SvBitVecVal) {
 }
 
 #[no_mangle]
+unsafe extern "C" fn cosim_watchdog(reason: *mut c_char) {
+    let mut driver = DPI_TARGET.lock().unwrap();
+    if let Some(driver) = driver.as_mut() {
+        *reason = driver.watchdog() as c_char;
+    }
+}
+
+#[no_mangle]
 unsafe extern "C" fn cosim_init() {
     println!("cosim_init called");
 
@@ -213,6 +222,10 @@ unsafe extern "C" fn cosim_init() {
         "cosim_init should be called only once"
     );
     *dpi_target = Some(driver);
+
+    if let Some(driver) = dpi_target.as_mut() {
+        driver.init();
+    }
 }
 
 //--------------------------------
@@ -230,8 +243,8 @@ mod dpi_export {
 }
 
 #[cfg(feature = "trace")]
-pub(crate) fn dump_wave(scope: crate::svdpi::SvScope, path: &str) {
-    use crate::svdpi;
+pub(crate) fn dump_wave(scope: svdpi::SvScope, path: &str) {
+    use svdpi;
     let path_cstring = CString::new(path).unwrap();
 
     svdpi::set_scope(scope);

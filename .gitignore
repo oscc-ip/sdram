@@ -1,4 +1,7 @@
+.envrc
+.direnv/
 .bloop
+.bsp/
 .metals/
 .vscode/
 out/

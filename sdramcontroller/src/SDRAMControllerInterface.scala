@@ -16,9 +16,9 @@ object SDRAMControllerParameter {
 }
 
 case class SDRAMControllerParameter(
-    axiParameter: AXI4BundleParameter,
-    sdramParameter: SDRAMParameter
-) extends SerializableModuleParameter {
+  axiParameter:   AXI4BundleParameter,
+  sdramParameter: SDRAMParameter)
+    extends SerializableModuleParameter {
   require(axiParameter.supportId, "doesn't support id")
   require(axiParameter.supportLen, "doesn't support len")
   require(axiParameter.supportSize, "doesn't support size")
@@ -37,8 +37,7 @@ case class SDRAMControllerParameter(
   )
 }
 
-class SDRAMControllerInterface(val parameter: SDRAMControllerParameter)
-    extends Record {
+class SDRAMControllerInterface(val parameter: SDRAMControllerParameter) extends Record {
   val elements: SeqMap[String, Data] = SeqMap.from(
     Seq(
       "clock" -> Input(Clock()),

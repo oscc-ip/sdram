@@ -17,6 +17,8 @@ in stdenvNoCC.mkDerivation {
 
   passthru = { inherit mlirbc; };
 
+  src = ./../../sdramcontroller;
+
   buildCommand = ''
     mkdir -p $out
 
@@ -24,10 +26,12 @@ in stdenvNoCC.mkDerivation {
       lib.escapeShellArgs mfcArgs
     }
 
+    cp $src/extmodules/*.v $out
+
     pushd $out
     find . ${
       lib.concatStringsSep " " enableLayersDirs
-    } -maxdepth 1 -name "*.sv" -type f -print > ./filelist.f
+    } -maxdepth 1 \( -name "*.sv" -o -name "*.v" \) -type f -print > ./filelist.f
     popd
   '';
 }

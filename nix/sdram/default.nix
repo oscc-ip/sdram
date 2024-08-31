@@ -3,11 +3,12 @@
 
 { lib, newScope, }:
 lib.makeScope newScope (scope: {
-  design-target = "SDRAM";
-  tb-target = "SDRAMTestBench";
+  design-target = "SDRAMController";
+  tb-target = "SDRAMControllerTestBench";
 
   # RTL
-  sdram-compiled = scope.callPackage ./sdram.nix { target = scope.design-target; };
+  sdram-compiled =
+    scope.callPackage ./sdram.nix { target = scope.design-target; };
   elaborate = scope.callPackage ./elaborate.nix {
     elaborator = scope.sdram-compiled.elaborator;
   };
@@ -37,8 +38,7 @@ lib.makeScope newScope (scope: {
       vpi = true;
     };
     rtl = scope.tb-rtl.override {
-      enable-layers =
-        [ "Verification" "Verification.Assert" "Verification.Cover" ];
+      enable-layers = [ "Verification" "Verification.Assert" ];
     };
   };
   vcs-trace = scope.vcs.override {
@@ -50,7 +50,7 @@ lib.makeScope newScope (scope: {
 
   # TODO: designConfig should be read from OM
   tbConfig = with builtins;
-    fromJSON (readFile ./../../configs/${scope.tb-target}.json);
+    fromJSON (readFile ./../../configs/${scope.tb-target}Main.json);
 
 })
 

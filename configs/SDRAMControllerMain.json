@@ -1,0 +1,30 @@
+{
+    "axiParameter": {
+        "idWidth": 4,
+        "dataWidth": 32,
+        "addrWidth": 32,
+        "userReqWidth": 0,
+        "userDataWidth": 0,
+        "userRespWidth": 0,
+        "hasAW": true,
+        "hasW": true,
+        "hasB": true,
+        "hasAR": true,
+        "hasR": true,
+        "supportId": true,
+        "supportRegion": false,
+        "supportLen": true,
+        "supportSize": true,
+        "supportBurst": true,
+        "supportLock": false,
+        "supportCache": false,
+        "supportQos": false,
+        "supportStrb": true,
+        "supportResp": false,
+        "supportProt": false
+    },
+    "sdramParameter": {
+        "dataWidth": 32,
+        "csWidth": 4
+    }
+}

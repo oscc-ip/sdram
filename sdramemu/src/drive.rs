@@ -1,11 +1,10 @@
 use common::MEM_SIZE;
-use tracing::{debug, error, info, trace};
+use svdpi::{get_time, SvScope};
+use tracing::{error, info, trace};
 
 use crate::dpi::*;
-use crate::svdpi::SvScope;
 use crate::{OfflineArgs, AXI_SIZE};
 use std::collections::VecDeque;
-use std::thread::current;
 
 struct ShadowMem {
     mem: Vec<u8>,
@@ -27,7 +26,7 @@ impl ShadowMem {
     // size: 1 << arsize
     // return: Vec<u8> with len=bus_size
     pub fn read_mem_axi(&self, payload: AxiReadPayload) -> Vec<u8> {
-        let bytes_number: u32 = 1 << payload.size();
+        let bytes_number: u32 = 1 << payload.size;
 
         let transfer_count: u32 = (payload.len + 1) as u32;
 
@@ -53,12 +52,14 @@ impl ShadowMem {
         );
 
         for _ in 0..transfer_count {
-            data.extend_from_slice(&self.mem[current_addr..current_addr + bytes_number]);
+            data.extend_from_slice(
+                &self.mem[current_addr as usize..(current_addr + bytes_number) as usize],
+            );
 
             current_addr = match payload.burst {
-                Some(0) => current_addr,                // FIXED
-                Some(1) => current_addr + bytes_number, // INCR
-                Some(2) => {
+                0 => current_addr,                // FIXED
+                1 => current_addr + bytes_number, // INCR
+                2 => {
                     if current_addr + bytes_number >= upper_boundary {
                         lower_boundary
                     } else {
@@ -78,23 +79,23 @@ impl ShadowMem {
     // masks: write strokes, len=bus_size
     // data: write data, len=bus_size
     pub fn write_mem_axi(&mut self, payload: AxiWritePayload) {
-        let transfer_count: u32 = (payload.len + 1) as u32;
+        let transfer_count = (payload.len + 1) as usize;
 
         assert!(
-            transfer_count == payload.data.len() as u32
-                && transfer_count == payload.strb.len() as u32,
+            transfer_count == payload.data.len()
+                && transfer_count == payload.strb.len(),
             "malformed payload: transfer_count = {:?}, payload.data.len = {:?}, payload.strb.len = {:?}",
             transfer_count, payload.data.len(), payload.strb.len(),
         );
 
-        let bytes_number: u32 = 1 << payload.size();
+        let bytes_number: u32 = 1 << payload.size;
 
         let mut lower_boundary = 0;
         let mut upper_boundary = 0;
         if payload.burst == 2 {
-            lower_boundary =
-                payload.addr / (bytes_number * transfer_count) * (bytes_number * transfer_count);
-            upper_boundary = lower_boundary + bytes_number * transfer_count;
+            lower_boundary = payload.addr / (bytes_number * transfer_count as u32)
+                * (bytes_number * transfer_count as u32);
+            upper_boundary = lower_boundary + bytes_number * transfer_count as u32;
             assert!(
                 payload.len == 2 || payload.len == 4 || payload.len == 8 || payload.len == 16,
                 "unsupported burst len"
@@ -121,18 +122,18 @@ impl ShadowMem {
             let mut write_count = 0;
 
             for byte_idx in 0..AXI_SIZE / 8 {
-                let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1;
+                let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
                 if byte_mask {
-                    self.mem[current_addr + write_count] =
-                        payload.data[byte_idx as usize] >> (byte_idx * 8) & 0xff;
+                    self.mem[(current_addr + write_count) as usize] =
+                        (payload.data[byte_idx as usize] >> (byte_idx * 8) & 0xff) as u8;
                     write_count += 1;
                 }
             }
 
             current_addr = match payload.burst {
-                Some(0) => current_addr,                // FIXED
-                Some(1) => current_addr + bytes_number, // INCR
-                Some(2) => {
+                0 => current_addr,                // FIXED
+                1 => current_addr + bytes_number, // INCR
+                2 => {
                     if current_addr + bytes_number >= upper_boundary {
                         lower_boundary
                     } else {
@@ -163,6 +164,8 @@ pub(crate) struct Driver {
     pub(crate) dlen: u32,
 
     timeout: u64,
+
+    clock_flip_time: u64,
 
     shadow_mem: ShadowMem,
 
@@ -208,6 +211,10 @@ fn parse_range(input: &str) -> (u64, u64) {
 }
 
 impl Driver {
+    fn get_tick(&self) -> u64 {
+        get_time() / self.clock_flip_time
+    }
+
     pub(crate) fn new(scope: SvScope, args: &OfflineArgs) -> Self {
         #[cfg(feature = "trace")]
         let (dump_start, dump_end) = parse_range(&args.dump_range);
@@ -223,9 +230,9 @@ impl Driver {
             dump_end,
             #[cfg(feature = "trace")]
             dump_started: false,
-
             dlen: args.common_args.dlen,
             timeout: args.timeout,
+            clock_flip_time: args.clock_flip_time,
             shadow_mem: ShadowMem::new(),
             axi_read_fifo: VecDeque::new(),
             axi_write_done_fifo: VecDeque::new(),
@@ -236,13 +243,42 @@ impl Driver {
         self_
     }
 
+    pub(crate) fn init(&mut self) {
+        #[cfg(feature = "trace")]
+        if self.dump_start == 0 {
+            self.start_dump_wave();
+            self.dump_started = true;
+        }
+    }
+
+    pub(crate) fn watchdog(&mut self) -> u8 {
+        const WATCHDOG_CONTINUE: u8 = 0;
+        const WATCHDOG_TIMEOUT: u8 = 1;
+        const WATCHDOG_FINISH: u8 = 2;
+
+        let tick = self.get_tick();
+        #[cfg(feature = "trace")]
+        if self.dump_end != 0 && tick > self.dump_end {
+            info!("[{tick}] run to dump end, exiting");
+            return WATCHDOG_FINISH;
+        }
+
+        #[cfg(feature = "trace")]
+        if !self.dump_started && tick >= self.dump_start {
+            self.start_dump_wave();
+            self.dump_started = true;
+        }
+        trace!("[{tick}] watchdog continue");
+        WATCHDOG_CONTINUE
+    }
+
     pub(crate) fn axi_read_resp(&mut self, rdata: u32, rid: u8, rlast: u8, rresp: u8, ruser: u8) {
         trace!(
             "axi_read_resp (rdata={rdata}, rid={rid}, rlast={rlast:#x}, \
     rresp={rresp}, ruser={ruser})"
         );
         self.axi_read_buffer.extend_from_slice(&rdata.to_le_bytes());
-        if rlast {
+        if rlast == 1 {
             let payload = self.axi_read_fifo.pop_front().unwrap();
             let compare = self.shadow_mem.read_mem_axi(payload);
             assert_eq!(

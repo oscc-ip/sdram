@@ -20,7 +20,7 @@ let
         fileset = unions [
           ./../../build.sc
           ./../../common.sc
-          ./../../sdram
+          ./../../sdramcontroller
           ./../../elaborator
         ];
       };
@@ -32,7 +32,7 @@ let
           root = ./../..;
           fileset = unions [ ./../../build.sc ./../../common.sc ];
         };
-      millDepsHash = "sha256-ziXh1Pta9MQEzLzjtuppx1ll/57CdKADdSjCNdcIOGg=";
+      millDepsHash = "sha256-vG0sLWwKrCcpZuqXolz3UKQTZD1R9jk2p2psNaMiLl0=";
       nativeBuildInputs = [ projectDependencies.setupHook ];
     };
 
@@ -79,7 +79,7 @@ let
 
       mkdir -p $elaborator/bin
       makeWrapper ${jdk21}/bin/java $elaborator/bin/elaborator \
-        --add-flags "--enable-preview -Djava.library.path=${circt-full}/lib -cp $out/share/java/elaborator.jar org.chipsalliance.sdram.elaborator.${target}"
+        --add-flags "--enable-preview -Djava.library.path=${circt-full}/lib -cp $out/share/java/elaborator.jar oscc.sdramcontroller.elaborator.${target}Main"
     '';
   };
 in self
