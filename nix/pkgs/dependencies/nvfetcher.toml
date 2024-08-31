@@ -1,6 +1,5 @@
 [chisel]
-src.git = "https://github.com/chipsalliance/chisel"
-src.branch = "main"
+src.manual = "f347914dee389cebbe48ac4ef2e350e5ac1d267a"
 fetch.github = "chipsalliance/chisel"
 
 [chisel-interface]
