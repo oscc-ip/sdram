@@ -5,8 +5,10 @@
 package oscc.sdramcontroller
 
 import chisel3._
+import chisel3.experimental.hierarchy.{Instance, Instantiate}
 import chisel3.util._
 import org.chipsalliance.amba.axi4.bundle.`enum`.burst.{FIXED, INCR, WARP}
+import org.chipsalliance.dwbb.wrapper.DW_fifo_s1_sf.DW_fifo_s1_sf
 
 // This is what RTL designer need to implement, as well as necessary verification signal definitions.
 
@@ -42,83 +44,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         INCR -> (addr + 4.U)
       )
     )
-
-  /** First In First Out module */
-  private class FIFO(WIDTH: Int = 8, DEPTH: Int = 4, ADDR_W: Int = 2)
-      extends Module {
-    val io = IO(new Bundle {
-
-      /** FIFO clock */
-      val clk_i = Input(Clock())
-
-      /** FIFO reset */
-      val rst_i = Input(Bool())
-
-      /** FIFO data input */
-      val data_in_i = Input(UInt(WIDTH.W))
-
-      /** FIFO data push request */
-      val push_i = Input(Bool())
-
-      /** FIFO data pop request */
-      val pop_i = Input(Bool())
-
-      /** FIFO data output */
-      val data_out_o = Output(UInt(WIDTH.W))
-
-      /** FIFO accept signal, if it's true, FIFO can input data */
-      val accept_o = Output(Bool())
-
-      /** FIFO valid signal, if it's true, FIFO can output data */
-      val valid_o = Output(Bool())
-    })
-
-    /** FIFO count */
-    private val COUNT_W = ADDR_W + 1
-
-    withClockAndReset(io.clk_i, io.rst_i) {
-
-      /** FIFO buffer */
-      val ram = RegInit(VecInit.fill(DEPTH)(0.U(WIDTH.W)))
-
-      /** FIFO read pointer */
-      val rd_ptr = RegInit(0.U(ADDR_W.W))
-
-      /** FIFO write pointer */
-      val wr_ptr = RegInit(0.U(ADDR_W.W))
-
-      /** FIFO counter */
-      val count = RegInit(0.U(COUNT_W.W))
-
-      /** If read/write signals handshake, the corresponding pointer++, for
-        * write operation, save input data to RAM pointed to by write pointer.
-        */
-      when(io.push_i && io.accept_o) {
-        ram(wr_ptr) := io.data_in_i
-        wr_ptr := wr_ptr + 1.U
-      }
-      when(io.pop_i && io.valid_o) {
-        rd_ptr := rd_ptr + 1.U
-      }
-
-      /** Counter represent the status of read or write, if read signals
-        * handshake, counter++, if write signals handshake, counter--.
-        */
-      when((io.push_i && io.accept_o) && !(io.pop_i && io.valid_o)) {
-        count := count + 1.U
-      }
-        .elsewhen(!(io.push_i && io.accept_o) && (io.pop_i && io.valid_o)) {
-          count := count - 1.U
-        }
-
-      /** Use counter to control whether to input or output data. Read operation
-        * is combinatorial, data only depends on the read pointer.
-        */
-      io.accept_o := (count =/= DEPTH.U)
-      io.valid_o := (count =/= 0.U)
-      io.data_out_o := ram(rd_ptr)
-    }
-  }
 
   // ==========================================================================
   // SDRAM Main
@@ -287,15 +212,25 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
       }
 
-    val u_requests = Module(new FIFO(6))
-    u_requests.io.clk_i := clock
-    u_requests.io.rst_i := reset
-    u_requests.io.data_in_i := req_in_r
-    u_requests.io.push_i := req_push_w
-    req_fifo_accept_w := u_requests.io.accept_o
-    u_requests.io.pop_i := resp_accept_w
-    req_out_w := u_requests.io.data_out_o
-    req_out_valid_w := u_requests.io.valid_o
+    val u_requests: Instance[DW_fifo_s1_sf] = Instantiate(new DW_fifo_s1_sf(
+      org.chipsalliance.dwbb.interface.DW_fifo_s1_sf.Parameter(
+        width = req_in_r.getWidth,
+        depth = 4,
+        aeLevel = 1,
+        afLevel = 1,
+        errMode = "pointer_latched",
+        rstMode = "async_with_mem"
+      )
+    ))
+    u_requests.io.clk := clock
+    u_requests.io.rst_n := !reset
+    u_requests.io.push_req_n := !req_push_w
+    u_requests.io.pop_req_n := !resp_accept_w
+    u_requests.io.diag_n := true.B
+    u_requests.io.data_in := req_in_r
+    req_out_w := u_requests.io.data_out
+    req_out_valid_w := !u_requests.io.empty
+    req_fifo_accept_w := !u_requests.io.empty
 
     val resp_is_write_w = Mux(req_out_valid_w, ~req_out_w(5), false.B)
     val resp_is_read_w = Mux(req_out_valid_w, req_out_w(5), false.B)
@@ -307,15 +242,24 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     val resp_valid_w = WireInit(false.B)
 
-    val u_response = Module(new FIFO(32))
-    u_response.io.clk_i := clock
-    u_response.io.rst_i := reset
-    u_response.io.data_in_i := ram_read_data_w
-    u_response.io.push_i := ram_ack_w
-    u_response.io.accept_o := DontCare
-    u_response.io.pop_i := resp_accept_w
-    axi.r.bits.data := u_response.io.data_out_o
-    resp_valid_w := u_response.io.valid_o
+    val u_response: Instance[DW_fifo_s1_sf] = Instantiate(new DW_fifo_s1_sf(
+      org.chipsalliance.dwbb.interface.DW_fifo_s1_sf.Parameter(
+        width = ram_read_data_w.getWidth,
+        depth = 4,
+        aeLevel = 1,
+        afLevel = 1,
+        errMode = "pointer_latched",
+        rstMode = "async_with_mem"
+      )
+    ))
+    u_response.io.clk := clock
+    u_response.io.rst_n := !reset
+    u_response.io.push_req_n := !ram_ack_w
+    u_response.io.pop_req_n := !resp_accept_w
+    u_response.io.diag_n := true.B
+    u_response.io.data_in := ram_read_data_w
+    axi.r.bits.data := u_response.io.data_out
+    resp_valid_w := !u_response.io.empty
 
     // ------------------------------------------------------------------------
     // AXI4 Request
