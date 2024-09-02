@@ -37,7 +37,7 @@ trait SDRAMControllerModule extends HasChisel {
   def axi4Module: ScalaModule
   def sdramModule: ScalaModule
   override def moduleDeps: Seq[JavaModule] =
-    super.moduleDeps ++ Seq(sdramModule, axi4Module)
+    super.moduleDeps ++ Seq(sdramModule, axi4Module, dwbbModule)
   override def ivyDeps = T(super.ivyDeps() ++ Some(mainargsIvy))
 }
 
