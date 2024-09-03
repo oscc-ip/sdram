@@ -16,6 +16,7 @@ final: prev: {
   # Remember to add "--impure" flag for nix to read this value from environment
   vcStaticHome = builtins.getEnv "VC_STATIC_HOME";
   snpslmdLicenseFile = builtins.getEnv "SNPSLMD_LICENSE_FILE";
+  dwbb = builtins.getEnv "DWBB_DIR";
   vcs-fhs-env = assert final.lib.assertMsg (final.vcStaticHome != "")
     "You forget to set VC_STATIC_HOME or the '--impure' flag";
     assert final.lib.assertMsg (final.snpslmdLicenseFile != "")

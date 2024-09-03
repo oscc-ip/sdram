@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2024 Jiuyang Liu <liu@jiuyang.me>
 
-{ lib, bash, stdenv, rtl, dpi-lib, vcs-fhs-env }:
+{ lib, bash, stdenv, rtl, dpi-lib, vcs-fhs-env, dwbb }:
 
 stdenv.mkDerivation {
   name = "vcs";
@@ -23,6 +23,8 @@ stdenv.mkDerivation {
     VERDI_HOME=$("$fhsBash" -c "printenv VERDI_HOME")
     "$fhsBash" vcs \
       -sverilog \
+      -y ${dwbb}/sim_ver \
+      +libext+.v+ \
       -full64 \
       -timescale=1ns/1ps \
       +v2k \
