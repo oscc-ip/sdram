@@ -13,6 +13,7 @@ stdenvNoCC.mkDerivation {
 
   passthru = {
     inherit elaborate;
+    inherit (elaborate) target;
   };
 
   buildCommand = ''

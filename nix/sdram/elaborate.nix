@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2024 Jiuyang Liu <liu@jiuyang.me>
 
 # TODO: in the future, we may need to add circtbindng pass and set it by default.
-{ lib, stdenvNoCC, espresso, circt, elaborator }:
+{ stdenvNoCC, espresso, circt, elaborator }:
 
 stdenvNoCC.mkDerivation {
   name = "${elaborator.name}-elaborate";
@@ -10,12 +10,15 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ espresso circt ];
 
   src = ./../../configs;
-  passthru = { inherit elaborator; };
+  passthru = {
+    inherit elaborator;
+    inherit (elaborator) target;
+  };
 
   buildCommand = ''
     mkdir -p elaborate $out
 
-    ${elaborator}/bin/elaborator design --parameter $src/${elaborator.elaborateTarget}Main.json --target-dir elaborate
+    ${elaborator}/bin/elaborator design --parameter $src/${elaborator.target}Main.json --target-dir elaborate
 
     firtool elaborate/*.fir \
       --annotation-file elaborate/*.anno.json \
