@@ -23,12 +23,10 @@ Use this line to generate a json config at `PWD`, you can config the parameter o
 
 ```bash
 # rtl config
-nix build .#sdram.sdram-compiled.elaborator
-./result-elaborator/bin/elaborator config --idWidth 4 --dataWidth 32 --addrWidth 32 --csWidth 4
+nix run .#sdram.sdram-compiled.elaborator -- config --idWidth 4 --dataWidth 32 --addrWidth 32 --csWidth 4
 
 # testbench config
-nix build .#sdram.tb-compiled.elaborator
-./result-elaborator/bin/elaborator config --idWidth 4 --dataWidth 32 --addrWidth 32 --csWidth 4 --useAsyncReset false --initFunctionName cosim_init --dumpFunctionName dump_wave --clockFlipTick 1 --resetFlipTick 100 --timeout 10000
+nix run .#sdram.tb-compiled.elaborator -- config --idWidth 4 --dataWidth 32 --addrWidth 32 --csWidth 4 --useAsyncReset false --initFunctionName cosim_init --dumpFunctionName dump_wave --clockFlipTick 1 --resetFlipTick 100 --timeout 10000
 ```
 
 Use this line to generate the Verilog at `result`, based on the config in `configs` directory.
@@ -48,8 +46,7 @@ Generated Verilog will be placed at `result` by default, which can be specified 
 ## Run VCS Simulation
 
 ```bash
-nix build --impure .#sdram.vcs-trace
-./result/bin/sdram-vcs-simulator --wave-path ./trace --dump-range 0,100000
+nix run .#sdram.vcs-trace --impure -- +dump-range=0,10000 +wave-path=trace +fsdb+sva_success
 ```
 
 ## Update dependency
