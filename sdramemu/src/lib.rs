@@ -1,27 +1,28 @@
-use clap::Parser;
-use common::CommonArgs;
+use common::{plusarg::PlusArgMatcher,  CommonArgs};
 
 pub mod dpi;
 pub mod drive;
 
-#[derive(Parser)]
 pub(crate) struct OfflineArgs {
-    #[command(flatten)]
     pub common_args: CommonArgs,
 
     #[cfg(feature = "trace")]
-    #[arg(long)]
     pub wave_path: String,
 
     #[cfg(feature = "trace")]
-    #[arg(long, default_value = "")]
     pub dump_range: String,
-
-    #[arg(long, hide = true, default_value = env!("TIMEOUT"))]
-    pub timeout: u64,
-    
-    #[arg(long, hide = true,default_value = env!("CLOCK_FLIP_TIME"))]
-    clock_flip_time: u64,
 }
 
 pub const AXI_SIZE: u8 = 32;
+
+impl OfflineArgs {
+    pub fn from_plusargs(matcher: &PlusArgMatcher) -> Self {
+        Self {
+            common_args: CommonArgs::from_plusargs(matcher),
+            #[cfg(feature = "trace")]
+            dump_range: matcher.match_("dump-range").into(),
+            #[cfg(feature = "trace")]
+            wave_path: matcher.match_("wave-path").into(),
+        }
+    }
+}

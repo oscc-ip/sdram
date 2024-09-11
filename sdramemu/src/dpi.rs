@@ -2,15 +2,15 @@
 #![allow(unused_variables)]
 
 use bytemuck::cast_slice;
-use clap::Parser;
+use common::plusarg::PlusArgMatcher;
 use rand::Rng;
 use std::ffi::*;
 use std::sync::Mutex;
 use tracing::debug;
 
 use crate::drive::Driver;
-use svdpi::SvScope;
 use crate::{OfflineArgs, AXI_SIZE};
+use svdpi::SvScope;
 
 pub type SvBitVecVal = u32;
 
@@ -210,7 +210,8 @@ unsafe extern "C" fn cosim_watchdog(reason: *mut c_char) {
 unsafe extern "C" fn cosim_init() {
     println!("cosim_init called");
 
-    let args = OfflineArgs::parse();
+    let plusargs = PlusArgMatcher::from_args();
+    let args = OfflineArgs::from_plusargs(&plusargs);
     args.common_args.setup_logger().unwrap();
 
     let scope = SvScope::get_current().expect("failed to get scope in cosim_init");

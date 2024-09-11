@@ -231,8 +231,8 @@ impl Driver {
             #[cfg(feature = "trace")]
             dump_started: false,
             dlen: args.common_args.dlen,
-            timeout: args.timeout,
-            clock_flip_time: args.clock_flip_time,
+            timeout: env!("TIMEOUT").parse().unwrap(),
+            clock_flip_time: env!("CLOCK_FLIP_TIME").parse().unwrap(),
             shadow_mem: ShadowMem::new(),
             axi_read_fifo: VecDeque::new(),
             axi_write_done_fifo: VecDeque::new(),

@@ -1,24 +1,20 @@
 use anyhow::Result;
-use clap::Parser;
+use plusarg::PlusArgMatcher;
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 pub mod rtl_config;
+pub mod plusarg;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
 pub struct CommonArgs {
 
   /// Log level: trace, debug, info, warn, error
-  #[arg(long, default_value = "info")]
   pub log_level: String,
 
   /// vlen config
-  #[arg(long, default_value = "32")]
   pub vlen: u32,
 
   /// dlen config
-  #[arg(long, default_value = "32")]
   pub dlen: u32,
 
 }
@@ -42,4 +38,12 @@ impl CommonArgs {
       .expect("internal error: fail to setup log subscriber");
     Ok(())
   }
+
+    pub fn from_plusargs(matcher: &PlusArgMatcher) -> Self {
+        Self {
+            log_level: matcher.try_match("log-level").unwrap_or("info").into(),
+            vlen:matcher.try_match("vlen").unwrap_or("32").parse().unwrap(),
+            dlen:matcher.try_match("dlen").unwrap_or("32").parse().unwrap(),
+        }
+    }
 }
