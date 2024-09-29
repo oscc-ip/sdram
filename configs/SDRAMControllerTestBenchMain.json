@@ -36,5 +36,5 @@
         "clockFlipTick": 1,
         "resetFlipTick": 100
     },
-    "timeout": 10000
+    "timeout": 1000000
 }

@@ -229,8 +229,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_requests.io.diag_n := true.B
     u_requests.io.data_in := req_in_r
     req_out_w := u_requests.io.data_out
-    req_out_valid_w := !u_requests.io.empty
-    req_fifo_accept_w := !u_requests.io.empty
+    req_out_valid_w := u_requests.io.empty
+    req_fifo_accept_w := u_requests.io.empty
 
     val resp_is_write_w = Mux(req_out_valid_w, ~req_out_w(5), false.B)
     val resp_is_read_w = Mux(req_out_valid_w, req_out_w(5), false.B)
@@ -282,6 +282,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_fifo_accept_w
     axi.ar.ready := read_active_w && !req_rd_q && ram_accept_w &&
       req_fifo_accept_w
+    dontTouch(read_active_w)
+    dontTouch(req_rd_q)
+    dontTouch(ram_accept_w)
+    dontTouch(req_fifo_accept_w)
 
     val addr_w = Mux(
       req_wr_q || req_rd_q,
@@ -620,6 +624,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      */
     next_state_r := state_q
     target_state_r := target_state_q
+    dontTouch(next_state_r)
+    dontTouch(state_q)
 
     switch(state_q) {
 
@@ -797,6 +803,19 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     /** Record target state */
     target_state_q := target_state_r
+
+    /** Record delayed state */
+    when (state_q =/= STATE_DELAY && delay_r =/= 0.U(DELAY_W.W)) {
+      delay_state_q <= next_state_r
+    }
+
+    /** Update actual state */
+    when (delay_r =/= 0.U(DELAY_W.W)) {
+      state_q <= STATE_DELAY
+    }
+    .otherwise {
+      state_q <= next_state_r;
+    }
 
     /** Record delay state */
     delay_q := delay_r
@@ -1027,6 +1046,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * write data requests can be accepted for SDRAM.
       */
     ram_accept_w := (state_q === STATE_READ || state_q === STATE_WRITE0)
+    dontTouch(ram_accept_w)
 
     // ------------------------------------------------------------------------
     // SDRAM Innput / Output

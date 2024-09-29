@@ -1,0 +1,4 @@
+-Dhttp.proxyHost=172.24.6.3
+-Dhttp.proxyPort=8964
+-Dhttps.proxyHost=172.24.6.3
+-Dhttps.proxyPort=8964

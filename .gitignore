@@ -8,3 +8,7 @@ out/
 result*
 /dependencies/
 target/
+novas.conf
+novas.rc
+sdram-sim-result/
+verdiLog/
