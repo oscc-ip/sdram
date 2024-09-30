@@ -57,32 +57,24 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     /** AXI4 read and write request length */
     val req_len_q = RegInit(0.U(8.W))
-
     /** AXI4 read and write addr */
     val req_addr_q = RegInit(0.U(32.W))
-
     /** AXI4 write request enable */
     val req_wr_q = RegInit(false.B)
-
     /** AXI4 read request enable */
     val req_rd_q = RegInit(false.B)
-
     /** AXI4 read and write request id */
     val req_id_q = RegInit(0.U(4.W))
-
     /** AXI4 read and write burst type */
     val req_axburst_q = RegInit(0.U(2.W))
-
     /** AXI4 read and write burst length */
     val req_axlen_q = RegInit(0.U(8.W))
-
     /** AXI4 read and write priority, when ar or aw handshake happen, it will
       * flip value, ensure that when neither the read nor the write request is
       * in the hold state, if prio is high, write is executed, otherwise read is
       * executed.
       */
     val req_prio_q = RegInit(false.B)
-
     /** SDRAM write mask, it cotains both enable and mask functions. when it
       * don't equal 4'b0000, it represent write is enable. Since the data bit of
       * AXI4 is 32 and that of SDRAM is 16, write operation is divided into 2
@@ -90,12 +82,22 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * and the upper 2 bit are used for the second write (WRITE1).
       */
     val ram_wr = WireInit(0.U(4.W))
-
     /** SDRAM read enalbe */
     val ram_rd = WireInit(0.U(1.W))
-
     /** SDRAM accept enable */
     val ram_accept = WireInit(false.B)
+
+    dontTouch(req_len_q)
+    dontTouch(req_addr_q)
+    dontTouch(req_wr_q)
+    dontTouch(req_rd_q)
+    dontTouch(req_id_q)
+    dontTouch(req_axburst_q)
+    dontTouch(req_axlen_q)
+    dontTouch(req_prio_q)
+    dontTouch(ram_wr)
+    dontTouch(ram_rd)
+    dontTouch(ram_accept)
 
     /** When SDRAM mode is brust, let it perform read or write operation
       * continuously before request ends.
@@ -149,9 +151,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     /** AXI4 read request hold status */
     val req_hold_rd_q = RegInit(false.B)
-
     /** AXI4 write request hold status */
     val req_hold_wr_q = RegInit(false.B)
+
+    dontTouch(req_hold_rd_q)
+    dontTouch(req_hold_wr_q)
 
     /** When AXI4 read or write request is enable and cannot accept data, assert
       * corresponding hold status, otherwise deassert.
@@ -174,33 +178,35 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     /** AXI4 request push enable */
     val req_push_w = ((ram_rd === 1.U) || (ram_wr =/= 0.U)) && ram_accept
-
     /** AXI4 request input control Req[5]: Request Status, 0 = Write, 1 = Read
       * Req[4]: AXI4 Address or Request Length Status, 0 = Length > 1, 1 =
       * Length equal 0 Req[3 : 0]: AXI4 Address ID
       */
     val req_in_r = RegInit(0.U(6.W))
-
     /** AXI4 request output valid enable */
     val req_out_valid_w = WireInit(false.B)
-
     /** AXI4 request out control */
     val req_out_w = WireInit(0.U(6.W))
-
     /** AXI4 response accept enable */
     val resp_accept_w = WireInit(false.B)
-
     /** AXI4 request FIFO accept enable */
     val req_fifo_accept_w = WireInit(false.B)
-
     /** SDRAM read data */
     val ram_read_data_w = WireInit(0.U(32.W))
-
     /** SDRAM ack enable */
     val ram_ack_w = WireInit(false.B)
-
     /** SDRAM accept enable */
     val ram_accept_w = WireInit(false.B)
+
+    dontTouch(req_push_w)
+    dontTouch(req_in_r)
+    dontTouch(req_out_valid_w)
+    dontTouch(req_out_w)
+    dontTouch(resp_accept_w)
+    dontTouch(req_fifo_accept_w)
+    dontTouch(ram_read_data_w)
+    dontTouch(ram_ack_w)
+    dontTouch(ram_accept_w)
 
     when(axi.ar.valid && axi.ar.ready) {
       req_in_r := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
@@ -232,10 +238,17 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     req_out_valid_w := u_requests.io.empty
     req_fifo_accept_w := u_requests.io.empty
 
+    dontTouch(u_requests.io)
+
     val resp_is_write_w = Mux(req_out_valid_w, ~req_out_w(5), false.B)
     val resp_is_read_w = Mux(req_out_valid_w, req_out_w(5), false.B)
     val resp_is_last_w = req_out_w(4)
     val resp_id_w = req_out_w(3, 0)
+
+    dontTouch(resp_is_write_w)
+    dontTouch(resp_is_read_w)
+    dontTouch(resp_is_last_w)
+    dontTouch(resp_id_w)
 
     // ------------------------------------------------------------------------
     // AXI4 Response Buffering
@@ -261,11 +274,16 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     axi.r.bits.data := u_response.io.data_out
     resp_valid_w := !u_response.io.empty
 
+    dontTouch(u_response.io)
+
     // ------------------------------------------------------------------------
     // AXI4 Request
     // ------------------------------------------------------------------------
     val write_prio_w = (req_prio_q && !req_hold_rd_q) || req_hold_wr_q
     val read_prio_w = (!req_prio_q && !req_hold_wr_q) || req_hold_rd_q
+
+    dontTouch(write_prio_w)
+    dontTouch(read_prio_w)
 
     val write_active_w = (axi.aw.valid || req_wr_q) &&
       !req_rd_q &&
@@ -276,16 +294,18 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_fifo_accept_w &&
       (read_prio_w || req_rd_q || !axi.aw.valid)
 
+    dontTouch(write_active_w)
+    dontTouch(read_active_w)
+
     axi.aw.ready := write_active_w && !req_wr_q && ram_accept_w &&
       req_fifo_accept_w
     axi.w.ready := write_active_w && ram_accept_w &&
       req_fifo_accept_w
     axi.ar.ready := read_active_w && !req_rd_q && ram_accept_w &&
       req_fifo_accept_w
-    dontTouch(read_active_w)
-    dontTouch(req_rd_q)
-    dontTouch(ram_accept_w)
-    dontTouch(req_fifo_accept_w)
+    dontTouch(axi.aw.ready)
+    dontTouch(axi.w.ready)
+    dontTouch(axi.ar.ready)
 
     val addr_w = Mux(
       req_wr_q || req_rd_q,
@@ -293,13 +313,23 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       Mux(write_active_w, axi.aw.bits.addr, axi.ar.bits.addr)
     )
 
+    dontTouch(addr_w)
+
     val wr_w = write_active_w && axi.w.valid
     val rd_w = read_active_w
+
+    dontTouch(wr_w)
+    dontTouch(rd_w)
 
     val ram_addr_w = addr_w
     val ram_write_data_w = axi.w.bits.data
     val ram_rd_w = rd_w
     val ram_wr_w = Mux(wr_w, axi.w.bits.strb, 0.U(4.W))
+
+    dontTouch(ram_addr_w)
+    dontTouch(ram_write_data_w)
+    dontTouch(ram_rd_w)
+    dontTouch(ram_wr_w)
 
     // ------------------------------------------------------------------------
     // AXI4 Response
@@ -309,16 +339,28 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     axi.b.bits.id := resp_id_w
     axi.b.bits.user := 0.U
 
+    dontTouch(axi.b.valid)
+    dontTouch(axi.b.bits.resp)
+    dontTouch(axi.b.bits.id)
+    dontTouch(axi.b.bits.user)
+
     axi.r.valid := resp_valid_w && resp_is_read_w
     axi.r.bits.resp := 0.U(2.W)
     axi.r.bits.id := resp_id_w
     axi.r.bits.last := resp_is_last_w
     axi.r.bits.user := 0.U
 
+    dontTouch(axi.r.valid)
+    dontTouch(axi.r.bits.resp)
+    dontTouch(axi.r.bits.id)
+    dontTouch(axi.r.bits.last)
+    dontTouch(axi.r.bits.user)
+
     resp_accept_w := (axi.r.valid && axi.r.ready) ||
       (axi.b.valid && axi.b.ready) ||
       (resp_valid_w && resp_is_write_w.asBool && !resp_is_last_w)
 
+    dontTouch(resp_accept_w)
     // ========================================================================
     // SDRAM Controller
     // ========================================================================
@@ -508,68 +550,67 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     /** SDRAM Read or Write request */
     val ram_req_w = (ram_wr_w =/= 0.U) || ram_rd_w
-    dontTouch(ram_req_w)
-    dontTouch(ram_wr_w)
-    dontTouch(ram_rd_w)
-
     /** SDRAM Command */
     val command_q = RegInit(CMD_NOP)
-
     /** SDRAM Row Address */
     val addr_q = RegInit(0.U(SDRAM_ROW_W.W))
-
     /** SDRAM Data */
     val data_q = RegInit(0.U(SDRAM_DATA_W.W))
-
     /** SDRAM Read Enable */
     val data_rd_en_q = RegInit(true.B)
-
     /** SDRAM DQM */
     val dqm_q = RegInit(0.U(SDRAM_DQM_W.W))
-
     /** SDRAM Clock Enable */
     val cke_q = RegInit(false.B)
-
     /** SDRAM Bank Address */
     val bank_q = RegInit(0.U(SDRAM_BANK_W.W))
-
     /** During READ and WRITE command, use buffer to receive stable data. */
     /** SDRAM Data Buffer */
     val data_buffer_q = RegInit(0.U(SDRAM_DATA_W.W))
-
     /** SDRAM DQM Buffer */
     val dqm_buffer_q = RegInit(0.U(SDRAM_DQM_W.W))
-
     /** SDRAM Input Data */
     val sdram_data_in_w = WireInit(0.U(SDRAM_DATA_W.W))
-
     /** SDRAM Refresh Enable */
     val refresh_q = RegInit(false.B)
-
     /** SDRAM Open Row Enable (Every bit represents different bank) */
     val row_open_q = RegInit(0.U(SDRAM_BANK_N.W))
-
     /** SDRAM Active Row Enable */
     val active_row_q = VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_BANK_W.W))
-
     /** Current State */
     val state_q = RegInit(STATE_INIT)
-
     /** Next State */
     val next_state_r = RegInit(0.U(STATE_W.W))
-
     /** Target State (Next). When current state is ACTIVATE, use it to indicate
       * whether next state is READ or WRITE. When current state is PRECHARGE,
       * REFRESH priority is higher than ACTIVE, if target state is REFRESH, let
       * next state is REFRESH, otherwise is ACTIVATE.
       */
     val target_state_r = RegInit(0.U(STATE_W.W))
-
     /** Target State (Current) */
     val target_state_q = RegInit(STATE_IDLE)
-
     /** Deleay State (Used for all delay operations) */
     val delay_state_q = RegInit(STATE_IDLE)
+
+    dontTouch(ram_req_w)
+    dontTouch(command_q)
+    dontTouch(addr_q)
+    dontTouch(data_q)
+    dontTouch(data_rd_en_q)
+    dontTouch(dqm_q)
+    dontTouch(cke_q)
+    dontTouch(bank_q)
+    dontTouch(data_buffer_q)
+    dontTouch(dqm_buffer_q)
+    dontTouch(sdram_data_in_w)
+    dontTouch(refresh_q)
+    dontTouch(row_open_q)
+    dontTouch(active_row_q)
+    dontTouch(state_q)
+    dontTouch(next_state_r)
+    dontTouch(target_state_r)
+    dontTouch(target_state_q)
+    dontTouch(delay_state_q)
 
     /** SDRAM Column Address (Current) */
     val addr_col_w = Cat(
@@ -577,12 +618,14 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       ram_addr_w(SDRAM_COL_W, 2),
       0.U(1.W)
     )
-
     /** SDRAM Row Address (Current) */
     val addr_row_w = ram_addr_w(SDRAM_ADDR_W, SDRAM_COL_W + 2 + 1)
-
     /** SDRAM Bank Address (Current) */
     val addr_bank_w = ram_addr_w(SDRAM_COL_W + 2, SDRAM_COL_W + 2 - 1)
+
+    dontTouch(addr_col_w)
+    dontTouch(addr_row_w)
+    dontTouch(addr_bank_w)
 
     // ------------------------------------------------------------------------
     // SDRAM State Machine
@@ -627,27 +670,20 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      */
     // next_state_r := state_q
     target_state_r := target_state_q
-    dontTouch(next_state_r)
-    dontTouch(state_q)
-    dontTouch(target_state_r)
-    dontTouch(target_state_q)
 
     switch(state_q) {
-
       /** Next State is IDLE, when the number of refresh is reached. */
       is(STATE_INIT) {
         when(refresh_q) {
           next_state_r := STATE_IDLE
         }
       }
-
       /** IDLE is the most important STATE, it determine which state to jump to
         * next based on conditions such as refresh counter, request enable, and
         * row open, etc.
         */
       is(STATE_IDLE) {
         when(refresh_q) {
-
           /** Close open rows, then refresh */
           when(row_open_q =/= 0.U) {
             next_state_r := STATE_PRECHARGE
@@ -658,7 +694,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           target_state_r := STATE_REFRESH
         }
         .elsewhen(ram_req_w) {
-
           /** Open row and active row hit at the same time */
           when(
             row_open_q(addr_bank_w) &&
@@ -690,7 +725,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           }
         }
       }
-
       /** Before executing READ or WRITE, ACTIVATE must be executed, so by
         * getting the value of target state, state machine can jump to the
         * corresponding READ or WRITE state.
@@ -698,12 +732,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       is(STATE_ACTIVATE) {
         next_state_r := target_state_r
       }
-
       /** Next State is READ_WAIT */
       is(STATE_READ) {
         next_state_r := STATE_READ_WAIT
       }
-
       /** Default next state is IDLE, but if another READ request with no
         * refresh come, and its bank hits and row is active, next state is still
         * READ.
@@ -719,12 +751,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           }
         }
       }
-
       /** Next State is WRITE1 */
       is(STATE_WRITE0) {
         next_state_r := STATE_WRITE1
       }
-
       /** Default next state is IDLE, but if another WRITE request with no
         * refresh come, and its bank hits and row is active, next state is still
         * WRITE.
@@ -740,7 +770,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           }
         }
       }
-
       /** REFRESH priority is higher than ACTIVE, if target state is REFRESH,
         * let next state is REFRESH, otherwise is ACTIVATE.
         */
@@ -751,12 +780,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           next_state_r := STATE_ACTIVATE
         }
       }
-
       /** Next State is IDLE */
       is(STATE_REFRESH) {
         next_state_r := STATE_IDLE
       }
-
       is(STATE_DELAY) {
         next_state_r := delay_state_q
       }
@@ -769,9 +796,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     /** SDRAM Delay (Current) */
     val delay_q = RegInit(0.U(DELAY_W.W))
-
     /** SDRAM Delay (Next) */
     val delay_r = RegInit(0.U(DELAY_W.W))
+
+    dontTouch(delay_q)
+    dontTouch(delay_r)
 
     delay_r := 0.U(DELAY_W.W)
 
@@ -832,6 +861,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     /** Make ensure INIT is complete */
     val refresh_timer_q = RegInit((SDRAM_TIME_INIT + 100).U(REFRESH_CNT_W.W))
+
+    dontTouch(refresh_timer_q)
+
     when(refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
       refresh_timer_q := SDRAM_CYCLES_REFRESH.asUInt
     }
@@ -853,9 +885,13 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * is obtained correctly.
       */
     val sample_data0_q = RegInit(0.U(SDRAM_DATA_W.W))
-    sample_data0_q := sdram_data_in_w
     val sample_data_q = RegInit(0.U(SDRAM_DATA_W.W))
-    sample_data_q := sample_data0_q
+
+    dontTouch(sample_data0_q)
+    dontTouch(sample_data_q)
+
+    sample_data0_q := sdram_data_in_w
+    sample_data_q  := sample_data0_q
 
     // ------------------------------------------------------------------------
     // SDRAM Command Output
@@ -1010,6 +1046,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * whether the controller state is READ in different cycle.
       */
     val rd_q = RegInit(0.U((SDRAM_READ_LATENCY + 2).W))
+
+    dontTouch(rd_q)
+
     rd_q := Cat(rd_q(SDRAM_READ_LATENCY, 0), state_q === STATE_READ)
 
     // ------------------------------------------------------------------------
@@ -1034,6 +1073,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     /** Pulling signal high indicates that READ or WRITE is complete. */
     val ack_q = RegInit(false.B)
+
+    dontTouch(ack_q)
+
     when(state_q === STATE_WRITE1) {
       ack_q := true.B
     }
