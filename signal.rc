@@ -1,0 +1,113 @@
+Magic 271485
+Revision Verdi_V-2023.12
+
+; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
+viewPort 0 25 1920 728 388 101
+
+; File list:
+; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
+openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-09-30-08-33-45/trace.fsdb"
+
+; file time scale:
+; fileTimeScale ### s|ms|us|ns|ps
+
+; signal spacing:
+signalSpacing 5
+
+; windowTimeUnit is used for zoom, cursor & marker
+; waveform viewport range
+zoom 0.000000 7581201.573435
+cursor 1000.000000
+marker 0.000000
+
+; user define markers
+; userMarker time_pos marker_name color linestyle
+; visible top row signal index
+top 29
+; marker line index
+markerPos 29
+
+; event list
+; addEvent event_name event_expression
+; curEvent event_name
+
+
+
+COMPLEX_EVENT_BEGIN
+
+
+COMPLEX_EVENT_END
+
+
+
+; toolbar current search type
+; curSTATUS search_type
+curSTATUS ByChange
+
+
+addGroup "G2"
+activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-09-30-08-33-45/trace.fsdb"
+addSignal -h 15 /SDRAMControllerTestBench/dut/clock
+addSignal -h 15 -holdScope reset
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_ck_0
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_ck_1
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_ck_2
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_ck_3
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_cke[3:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_cs[3:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_ras
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_cas
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_we
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_dqm[3:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_ba[1:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_a[12:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope addr_row_w[12:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope addr_col_w[12:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_addr_q[31:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope AXI_AWADDR[31:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope AXI_ARADDR[31:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope SDRAM_dqDir
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_dqo[31:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_dqi[31:0]
+addSignal -h 15 -holdScope AXI_AWREADY
+addSignal -h 15 -holdScope AXI_WREADY
+addSignal -h 15 -holdScope AXI_ARREADY
+addSignal -h 15 -holdScope write_active_w
+addSignal -h 15 -holdScope read_active_w
+addSignal -h 15 -holdScope req_wr_q
+addSignal -h 15 -holdScope req_rd_q
+addSignal -h 15 -holdScope ram_accept_w
+addSignal -h 15 -holdScope req_fifo_accept_w
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope state_q[3:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope next_state_r[3:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope target_state_q[3:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope target_state_r[3:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope delay_state_q[3:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -UDEC -holdScope delay_r[3:0]
+addSignal -h 15 -UNSIGNED -UDEC -holdScope refresh_timer_q[16:0]
+addSignal -h 15 -holdScope refresh_q
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope ram_req_w
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope ram_wr_w[1:0]
+addSignal -h 15 -holdScope write_active_w
+addSignal -h 15 -holdScope read_active_w
+addSignal -h 15 -holdScope AXI_AWVALID
+addSignal -h 15 -holdScope AXI_ARVALID
+addSignal -h 15 -holdScope req_wr_q
+addSignal -h 15 -holdScope AXI_WLAST
+addSignal -h 15 -holdScope req_rd_q
+addSignal -h 15 -UNSIGNED -HEX -holdScope AXI_ARLEN[7:0]
+addSignal -h 15 -holdScope req_fifo_accept_w
+addSignal -h 15 -holdScope write_prio_w
+addSignal -h 15 -holdScope read_prio_w
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope row_open_q[3:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope addr_bank_w[1:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope addr_row_w[1:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope active_row_q_3[1:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope active_row_q_2[1:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope active_row_q_1[1:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope active_row_q_0[1:0]
+addGroup "G3"
+
+; getSignalForm Scope Hierarchy Status
+; active file of getSignalForm
+
