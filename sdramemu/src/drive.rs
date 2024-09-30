@@ -306,10 +306,16 @@ impl Driver {
 
     pub(crate) fn axi_read_ready(&mut self) -> AxiReadPayload {
         trace!("axi_read_ready");
-        let payload =
-            AxiReadPayload::from_write_payload(self.axi_write_done_fifo.pop_front().unwrap());
-        self.axi_read_fifo.push_back(payload.clone());
-        payload
+        if self.axi_write_done_fifo.is_empty() {
+            let mut payload = AxiReadPayload::random();
+            payload.valid = false;
+            payload
+        } else {
+            let payload =
+                AxiReadPayload::from_write_payload(self.axi_write_done_fifo.pop_front().unwrap());
+            self.axi_read_fifo.push_back(payload.clone());
+            payload
+        }
     }
 
     #[cfg(feature = "trace")]

@@ -84,7 +84,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val req_prio_q = RegInit(false.B)
 
     /** SDRAM write mask, it cotains both enable and mask functions. when it
-      * don't equal 4'b0000, it represent write is enable. Since the date bit of
+      * don't equal 4'b0000, it represent write is enable. Since the data bit of
       * AXI4 is 32 and that of SDRAM is 16, write operation is divided into 2
       * steps, the lower 2 bit of mask are used for the first write (WRITE0),
       * and the upper 2 bit are used for the second write (WRITE1).
@@ -123,29 +123,29 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           axi.aw.bits.len
         )
       }
-        .otherwise {
-          req_wr_q := true.B
-          req_len_q := axi.aw.bits.len
-          req_id_q := axi.aw.bits.id
-          req_axburst_q := axi.aw.bits.burst
-          req_axlen_q := axi.aw.bits.len
-          req_addr_q := axi.aw.bits.addr
-        }
+      .otherwise {
+        req_wr_q := true.B
+        req_len_q := axi.aw.bits.len
+        req_id_q := axi.aw.bits.id
+        req_axburst_q := axi.aw.bits.burst
+        req_axlen_q := axi.aw.bits.len
+        req_addr_q := axi.aw.bits.addr
+      }
       req_prio_q := !req_prio_q
     }
-      .elsewhen(axi.ar.valid && axi.ar.ready) {
-        req_rd_q := (axi.ar.bits.len =/= 0.U)
-        req_len_q := axi.ar.bits.len - 1.U
-        req_addr_q := calculateAddressNext(
-          axi.ar.bits.addr,
-          axi.ar.bits.burst,
-          axi.ar.bits.len
-        )
-        req_id_q := axi.ar.bits.id
-        req_axburst_q := axi.ar.bits.burst
-        req_axlen_q := axi.ar.bits.len
-        req_prio_q := !req_prio_q
-      }
+    .elsewhen(axi.ar.valid && axi.ar.ready) {
+      req_rd_q := (axi.ar.bits.len =/= 0.U)
+      req_len_q := axi.ar.bits.len - 1.U
+      req_addr_q := calculateAddressNext(
+        axi.ar.bits.addr,
+        axi.ar.bits.burst,
+        axi.ar.bits.len
+      )
+      req_id_q := axi.ar.bits.id
+      req_axburst_q := axi.ar.bits.burst
+      req_axlen_q := axi.ar.bits.len
+      req_prio_q := !req_prio_q
+    }
 
     /** AXI4 read request hold status */
     val req_hold_rd_q = RegInit(false.B)
@@ -159,15 +159,15 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     when(ram_rd === 1.U && !ram_accept) {
       req_hold_rd_q := true.B
     }
-      .elsewhen(ram_accept) {
-        req_hold_rd_q := false.B
-      }
+    .elsewhen(ram_accept) {
+      req_hold_rd_q := false.B
+    }
     when(ram_wr =/= 0.U && !ram_accept) {
       req_hold_wr_q := true.B
     }
-      .elsewhen(ram_accept) {
-        req_hold_wr_q := true.B
-      }
+    .elsewhen(ram_accept) {
+      req_hold_wr_q := true.B
+    }
 
     // ------------------------------------------------------------------------
     // AXI4 Request Tracking
@@ -205,12 +205,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     when(axi.ar.valid && axi.ar.ready) {
       req_in_r := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
     }
-      .elsewhen(axi.aw.valid && axi.aw.ready) {
-        req_in_r := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
-      }
-      .otherwise {
-        req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
-      }
+    .elsewhen(axi.aw.valid && axi.aw.ready) {
+      req_in_r := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
+    }
+    .otherwise {
+      req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
+    }
 
     val u_requests: Instance[DW_fifo_s1_sf] = Instantiate(new DW_fifo_s1_sf(
       org.chipsalliance.dwbb.interface.DW_fifo_s1_sf.Parameter(
@@ -508,6 +508,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     /** SDRAM Read or Write request */
     val ram_req_w = (ram_wr_w =/= 0.U) || ram_rd_w
+    dontTouch(ram_req_w)
+    dontTouch(ram_wr_w)
+    dontTouch(ram_rd_w)
 
     /** SDRAM Command */
     val command_q = RegInit(CMD_NOP)
@@ -550,7 +553,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val active_row_q = VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_BANK_W.W))
 
     /** Current State */
-    val state_q = RegInit(0.U(STATE_W.W))
+    val state_q = RegInit(STATE_INIT)
 
     /** Next State */
     val next_state_r = RegInit(0.U(STATE_W.W))
@@ -622,10 +625,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      * |            |         0110         | BURST TERMINATE                                   |
      * +------------+----------------------+---------------------------------------------------+
      */
-    next_state_r := state_q
+    // next_state_r := state_q
     target_state_r := target_state_q
     dontTouch(next_state_r)
     dontTouch(state_q)
+    dontTouch(target_state_r)
+    dontTouch(target_state_q)
 
     switch(state_q) {
 
@@ -647,43 +652,43 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           when(row_open_q =/= 0.U) {
             next_state_r := STATE_PRECHARGE
           }
-            .otherwise {
-              next_state_r := STATE_REFRESH
-            }
+          .otherwise {
+            next_state_r := STATE_REFRESH
+          }
           target_state_r := STATE_REFRESH
         }
-          .elsewhen(ram_req_w) {
+        .elsewhen(ram_req_w) {
 
-            /** Open row and active row hit at the same time */
-            when(
-              row_open_q(addr_bank_w) &&
-                (addr_row_w === active_row_q(addr_bank_w))
-            ) {
-              when(!ram_rd_w) {
-                next_state_r := STATE_WRITE0
-              }.otherwise {
-                next_state_r := STATE_READ
-              }
+          /** Open row and active row hit at the same time */
+          when(
+            row_open_q(addr_bank_w) &&
+              (addr_row_w === active_row_q(addr_bank_w))
+          ) {
+            when(!ram_rd_w) {
+              next_state_r := STATE_WRITE0
+            }.otherwise {
+              next_state_r := STATE_READ
             }
-              /** Open row miss, close it and open new row */
-              .elsewhen(row_open_q(addr_bank_w)) {
-                next_state_r := STATE_PRECHARGE
-                when(!ram_rd_w) {
-                  target_state_r := STATE_WRITE0
-                }.otherwise {
-                  target_state_r := STATE_READ
-                }
-              }
-              /** No open row, open row */
-              .otherwise {
-                next_state_r := STATE_ACTIVATE
-                when(!ram_rd_w) {
-                  target_state_r := STATE_WRITE0
-                }.otherwise {
-                  target_state_r := STATE_READ
-                }
-              }
           }
+          /** Open row miss, close it and open new row */
+          .elsewhen(row_open_q(addr_bank_w)) {
+            next_state_r := STATE_PRECHARGE
+            when(!ram_rd_w) {
+              target_state_r := STATE_WRITE0
+            }.otherwise {
+              target_state_r := STATE_READ
+            }
+          }
+          /** No open row, open row */
+          .otherwise {
+            next_state_r := STATE_ACTIVATE
+            when(!ram_rd_w) {
+              target_state_r := STATE_WRITE0
+            }.otherwise {
+              target_state_r := STATE_READ
+            }
+          }
+        }
       }
 
       /** Before executing READ or WRITE, ACTIVATE must be executed, so by
@@ -752,7 +757,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         next_state_r := STATE_IDLE
       }
 
-      /** Next State is IDLE */
       is(STATE_DELAY) {
         next_state_r := delay_state_q
       }
@@ -806,15 +810,15 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     /** Record delayed state */
     when (state_q =/= STATE_DELAY && delay_r =/= 0.U(DELAY_W.W)) {
-      delay_state_q <= next_state_r
+      delay_state_q := next_state_r
     }
 
     /** Update actual state */
     when (delay_r =/= 0.U(DELAY_W.W)) {
-      state_q <= STATE_DELAY
+      state_q := STATE_DELAY
     }
     .otherwise {
-      state_q <= next_state_r;
+      state_q := next_state_r;
     }
 
     /** Record delay state */
@@ -831,16 +835,16 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     when(refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
       refresh_timer_q := SDRAM_CYCLES_REFRESH.asUInt
     }
-      .otherwise {
-        refresh_timer_q := refresh_timer_q - 1.U
-      }
+    .otherwise {
+      refresh_timer_q := refresh_timer_q - 1.U
+    }
 
     when(refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
       refresh_q := true.B
     }
-      .otherwise {
-        refresh_q := false.B
-      }
+    .otherwise {
+      refresh_q := false.B
+    }
 
     // ------------------------------------------------------------------------
     // SDRAM Input Sampling
@@ -863,7 +867,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     switch(state_q) {
       is(STATE_INIT) {
-        when(refresh_q === 50.U) {
+        when(refresh_timer_q === 50.U) {
           cke_q := true.B
         }.elsewhen(refresh_timer_q === 40.U) {
           command_q := CMD_PRECHARGE
@@ -918,30 +922,30 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           /** Close all open rows */
           row_open_q := 0.U(SDRAM_BANK_N.W)
         }
-          .otherwise {
-            // TODO: fix me: addr_q(BIT_ALL_BANKS) := 0.U(1.W)
-            /** Precharge specific bank */
-            addr_q := Cat(
-              addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1),
-              0.U,
-              addr_q(BIT_ALL_BANKS - 1, 0)
+        .otherwise {
+          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 0.U(1.W)
+          /** Precharge specific bank */
+          addr_q := Cat(
+            addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1),
+            0.U,
+            addr_q(BIT_ALL_BANKS - 1, 0)
+          )
+          bank_q := addr_bank_w
+          // TODO: fix me: row_open_q(addr_bank_w) := 0.U(1.W)
+          /** Close specific open row */
+          row_open_q := MuxLookup(addr_bank_w, row_open_q)(
+            Seq(
+              0.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 1), 0.U),
+              1.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 2), 0.U, row_open_q(0)),
+              2.U -> Cat(
+                row_open_q(SDRAM_BANK_N - 1, 3),
+                0.U,
+                row_open_q(SDRAM_BANK_N - 3, 0)
+              ),
+              3.U -> Cat(1.U, row_open_q(SDRAM_BANK_N - 2, 0))
             )
-            bank_q := addr_bank_w
-            // TODO: fix me: row_open_q(addr_bank_w) := 0.U(1.W)
-            /** Close specific open row */
-            row_open_q := MuxLookup(addr_bank_w, row_open_q)(
-              Seq(
-                0.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 1), 0.U),
-                1.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 2), 0.U, row_open_q(0)),
-                2.U -> Cat(
-                  row_open_q(SDRAM_BANK_N - 1, 3),
-                  0.U,
-                  row_open_q(SDRAM_BANK_N - 3, 0)
-                ),
-                3.U -> Cat(1.U, row_open_q(SDRAM_BANK_N - 2, 0))
-              )
-            )
-          }
+          )
+        }
       }
       is(STATE_REFRESH) {
         command_q := CMD_REFRESH
@@ -1017,12 +1021,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     when(state_q === STATE_WRITE0) {
       data_buffer_q := ram_write_data_w(31, 16)
     }
-      /** Judge state in the next cycle after delay, if it is READ, then store
-        * input sampling to buffer.
-        */
-      .elsewhen(rd_q(SDRAM_READ_LATENCY + 1)) {
-        data_buffer_q := sample_data_q
-      }
+    /** Judge state in the next cycle after delay, if it is READ, then store
+      * input sampling to buffer.
+      */
+    .elsewhen(rd_q(SDRAM_READ_LATENCY + 1)) {
+      data_buffer_q := sample_data_q
+    }
     ram_read_data_w := Cat(sample_data_q, data_buffer_q)
 
     // ------------------------------------------------------------------------
@@ -1033,12 +1037,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     when(state_q === STATE_WRITE1) {
       ack_q := true.B
     }
-      .elsewhen(rd_q(SDRAM_READ_LATENCY + 1)) {
-        ack_q := true.B
-      }
-      .otherwise {
-        ack_q := false.B
-      }
+    .elsewhen(rd_q(SDRAM_READ_LATENCY + 1)) {
+      ack_q := true.B
+    }
+    .otherwise {
+      ack_q := false.B
+    }
 
     ram_ack_w := ack_q
 
