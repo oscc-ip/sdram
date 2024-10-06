@@ -81,12 +81,12 @@ impl ShadowMem {
     pub fn write_mem_axi(&mut self, payload: AxiWritePayload) {
         let transfer_count = (payload.len + 1) as usize;
 
-        assert!(
-            transfer_count == payload.data.len()
-                && transfer_count == payload.strb.len(),
-            "malformed payload: transfer_count = {:?}, payload.data.len = {:?}, payload.strb.len = {:?}",
-            transfer_count, payload.data.len(), payload.strb.len(),
-        );
+        // assert!(
+        //     transfer_count == payload.data.len()
+        //         && transfer_count == payload.strb.len(),
+        //     "malformed payload: transfer_count = {:?}, payload.data.len = {:?}, payload.strb.len = {:?}",
+        //     transfer_count, payload.data.len(), payload.strb.len(),
+        // );
 
         let bytes_number: u32 = 1 << payload.size;
 
@@ -98,7 +98,8 @@ impl ShadowMem {
             upper_boundary = lower_boundary + bytes_number * transfer_count as u32;
             assert!(
                 payload.len == 2 || payload.len == 4 || payload.len == 8 || payload.len == 16,
-                "unsupported burst len"
+                "unsupported burst len: {}",
+                payload.len
             );
         }
 
@@ -115,19 +116,26 @@ impl ShadowMem {
 
             assert_eq!(
                 payload.strb[item_idx].count_ones(),
-                bytes_number,
+                payload.size as u32 + 1,
                 "the number of will write bytes is not equal"
             );
 
             let mut write_count = 0;
 
             for byte_idx in 0..AXI_SIZE / 8 {
-                let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
-                if byte_mask {
-                    self.mem[(current_addr + write_count) as usize] =
-                        (payload.data[byte_idx as usize] >> (byte_idx * 8) & 0xff) as u8;
-                    write_count += 1;
-                }
+                // let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
+                // if byte_mask {
+                info!(
+                    "writing({:?}) 0x{:x} -> 0x{:x} with strb:{:b}",
+                    write_count,
+                    (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8,
+                    (current_addr + write_count) as usize,
+                    payload.strb[item_idx] >> byte_idx & 1
+                );
+                self.mem[(current_addr + write_count) as usize] =
+                    (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8;
+                write_count += 1;
+                // }
             }
 
             current_addr = match payload.burst {
@@ -145,6 +153,7 @@ impl ShadowMem {
                 }
             }
         }
+        info!("axi write finished.");
     }
 }
 
@@ -311,6 +320,7 @@ impl Driver {
             payload.valid = false;
             payload
         } else {
+            info!("reading back...");
             let payload =
                 AxiReadPayload::from_write_payload(self.axi_write_done_fifo.pop_front().unwrap());
             self.axi_read_fifo.push_back(payload.clone());

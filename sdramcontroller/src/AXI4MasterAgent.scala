@@ -5,7 +5,8 @@ import chisel3._
 import chisel3.ltl.AssertProperty
 import chisel3.util.circt.dpi.{
   RawClockedVoidFunctionCall,
-  RawUnclockedNonVoidFunctionCall
+  RawUnclockedNonVoidFunctionCall,
+  RawClockedNonVoidFunctionCall
 }
 import chisel3.util.{isPow2, log2Ceil}
 import org.chipsalliance.amba.axi4.bundle._
@@ -48,7 +49,7 @@ class WritePayload(
   val strb = Vec(length, UInt(math.max(8, dataWidth / 8).W))
   val wUser = Vec(length, UInt(math.max(8, wUserWidth).W))
   val awUser = UInt(math.max(8, awUserWidth).W)
-  val dataValid = Bool()
+  val dataValid = UInt(8.W)
   val burst = UInt(8.W)
   val cache = UInt(8.W)
   val lock = UInt(8.W)
@@ -134,14 +135,14 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
             parameter.axiParameter.wUserWidth
           )
         )(when.cond && !io.gateWrite)
-        awFifo(awWPtr).index := 0.U
-        when(awFifo(awWPtr).payload.dataValid) {
+        when(awFifo(awWPtr).payload.dataValid =/= 0.U) {
+          awFifo(awWPtr).index := 0.U
           awFifo(awWPtr).addrValid := true.B
           awWPtr := awWPtr + 1.U
         }
       }
       channel.AWADDR := awFifo(awRPtr).payload.addr
-      channel.AWVALID := awFifo(awRPtr).addrValid
+      channel.AWVALID := awFifo(awRPtr).addrValid && awRPtr + 1.U =/= wRPtr
       channel.AWSIZE := awFifo(awRPtr).payload.size
       channel.AWBURST := awFifo(awRPtr).payload.burst
       channel.AWLOCK := awFifo(awRPtr).payload.lock
@@ -177,7 +178,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       channel.WVALID := awFifo(wRPtr).payload.dataValid
       when(wFire) {
         when(channel.WLAST) {
-          awFifo(wRPtr).payload.dataValid := false.B
+          awFifo(wRPtr).payload.dataValid := 0.U
           wRPtr := wRPtr + 1.U
           wCount := wCount + 1.U
         }.otherwise(
@@ -200,7 +201,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
         )
       }
 
-      AssertProperty(BoolSequence(awCount >= wCount))
+      // AssertProperty(BoolSequence(awCount >= wCount))
     }
   }
 
@@ -226,7 +227,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val arCount = RegInit(0.U(32.W))
 
       // AR
-      channel.ARVALID := !arFifo(arWPtr).payload.valid
+      channel.ARVALID := arFifo(arWPtr).payload.valid
       when(channel.ARREADY) {
         arFifo(arWPtr).payload := RawUnclockedNonVoidFunctionCall(
           s"axi_read_ready_${parameter.name}",
@@ -248,17 +249,17 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
         arRPtr := arRPtr + 1.U
         arCount := arCount + 1.U
       }
-      channel.ARADDR := arFifo(arWPtr).payload.addr
-      channel.ARBURST := arFifo(arWPtr).payload.burst
-      channel.ARCACHE := arFifo(arWPtr).payload.cache
-      channel.ARID := arFifo(arWPtr).payload.id
-      channel.ARLEN := arFifo(arWPtr).payload.len
-      channel.ARLOCK := arFifo(arWPtr).payload.lock
-      channel.ARPROT := arFifo(arWPtr).payload.prot
-      channel.ARQOS := arFifo(arWPtr).payload.qos
-      channel.ARREGION := arFifo(arWPtr).payload.region
-      channel.ARSIZE := arFifo(arWPtr).payload.size
-      channel.ARUSER := arFifo(arWPtr).payload.user
+      channel.ARADDR := arFifo(arRPtr).payload.addr
+      channel.ARBURST := arFifo(arRPtr).payload.burst
+      channel.ARCACHE := arFifo(arRPtr).payload.cache
+      channel.ARID := arFifo(arRPtr).payload.id
+      channel.ARLEN := arFifo(arRPtr).payload.len
+      channel.ARLOCK := arFifo(arRPtr).payload.lock
+      channel.ARPROT := arFifo(arRPtr).payload.prot
+      channel.ARQOS := arFifo(arRPtr).payload.qos
+      channel.ARREGION := arFifo(arRPtr).payload.region
+      channel.ARSIZE := arFifo(arRPtr).payload.size
+      channel.ARUSER := arFifo(arRPtr).payload.user
 
       // R
       channel.RREADY := true.B

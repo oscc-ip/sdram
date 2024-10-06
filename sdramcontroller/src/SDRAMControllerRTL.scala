@@ -75,6 +75,17 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * executed.
       */
     val req_prio_q = RegInit(false.B)
+    /** SDRAM write mask, it cotains both enable and mask functions. when it
+      * don't equal 4'b0000, it represent write is enable. Since the data bit of
+      * AXI4 is 32 and that of SDRAM is 16, write operation is divided into 2
+      * steps, the lower 2 bit of mask are used for the first write (WRITE0),
+      * and the upper 2 bit are used for the second write (WRITE1).
+      */
+    val ram_wr = WireInit(0.U(4.W))
+    /** SDRAM read enalbe */
+    val ram_rd = WireInit(0.U(1.W))
+    /** SDRAM accept enable */
+    val ram_accept = WireInit(false.B)
 
     dontTouch(req_len_q)
     dontTouch(req_addr_q)
@@ -84,11 +95,14 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(req_axburst_q)
     dontTouch(req_axlen_q)
     dontTouch(req_prio_q)
+    dontTouch(ram_wr)
+    dontTouch(ram_rd)
+    dontTouch(ram_accept)
 
     /** When SDRAM mode is brust, let it perform read or write operation
       * continuously before request ends.
       */
-    when((ram_wr_w =/= 0.U || ram_rd_w === 1.U) && ram_accept_w) {
+    when((ram_wr =/= 0.U || ram_rd === 1.U) && ram_accept) {
       when(req_len_q === 0.U) {
         req_rd_q := false.B
         req_wr_q := false.B
@@ -146,16 +160,16 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** When AXI4 read or write request is enable and cannot accept data, assert
       * corresponding hold status, otherwise deassert.
       */
-    when(ram_rd_w === 1.U && !ram_accept_w) {
+    when(ram_rd === 1.U && !ram_accept) {
       req_hold_rd_q := true.B
     }
-    .elsewhen(ram_accept_w) {
+    .elsewhen(ram_accept) {
       req_hold_rd_q := false.B
     }
-    when(ram_wr_w =/= 0.U && !ram_accept_w) {
+    when(ram_wr =/= 0.U && !ram_accept) {
       req_hold_wr_q := true.B
     }
-    .elsewhen(ram_accept_w) {
+    .elsewhen(ram_accept) {
       req_hold_wr_q := true.B
     }
 
@@ -163,7 +177,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // AXI4 Request Tracking
     // ------------------------------------------------------------------------
     /** AXI4 request push enable */
-    val req_push_w = ((ram_rd_w === 1.U) || (ram_wr_w =/= 0.U)) && ram_accept_w
+    val req_push_w = ((ram_rd === 1.U) || (ram_wr =/= 0.U)) && ram_accept
     /** AXI4 request input control Req[5]: Request Status, 0 = Write, 1 = Read
       * Req[4]: AXI4 Address or Request Length Status, 0 = Length > 1, 1 =
       * Length equal 0 Req[3 : 0]: AXI4 Address ID
@@ -201,7 +215,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_in_r := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
     }
     .otherwise {
-      req_in_r := Cat(ram_rd_w, req_len_q === 0.U, req_id_q)
+      req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
     }
 
     val u_requests: Instance[DW_fifo_s1_sf] = Instantiate(new DW_fifo_s1_sf(
@@ -283,13 +297,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(write_active_w)
     dontTouch(read_active_w)
 
-    axi.aw.ready := write_active_w && !req_wr_q && ram_accept_w &&
-      req_fifo_accept_w
-    axi.w.ready := write_active_w && ram_accept_w &&
-      req_fifo_accept_w
-    // arready为1的情况：读激活、、状态机处于读地址状态、fifo为空
-    axi.ar.ready := read_active_w && !req_rd_q && ram_accept_w &&
-      req_fifo_accept_w
+    // awready：!req_wr_q写掩码不为空、req_fifo_accept_w请求FIFO为空
+    axi.aw.ready := !req_wr_q && req_fifo_accept_w
+    axi.w.ready  :=              req_fifo_accept_w
+    // arready：!req_rd_q读完成-读握手之间、req_fifo_accept_w请求FIFO为空
+    axi.ar.ready := !req_rd_q && req_fifo_accept_w
     dontTouch(axi.aw.ready)
     dontTouch(axi.w.ready)
     dontTouch(axi.ar.ready)
@@ -311,12 +323,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val ram_addr_w = addr_w
     val ram_write_data_w = axi.w.bits.data
     val ram_rd_w = rd_w
-    /** SDRAM write mask, it cotains both enable and mask functions. when it
-      * don't equal 4'b0000, it represent write is enable. Since the data bit of
-      * AXI4 is 32 and that of SDRAM is 16, write operation is divided into 2
-      * steps, the lower 2 bit of mask are used for the first write (WRITE0),
-      * and the upper 2 bit are used for the second write (WRITE1).
-      */
     val ram_wr_w = Mux(wr_w, axi.w.bits.strb, 0.U(4.W))
 
     dontTouch(ram_addr_w)
@@ -354,6 +360,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       (resp_valid_w && resp_is_write_w.asBool && !resp_is_last_w)
 
     dontTouch(resp_accept_w)
+
     // ========================================================================
     // SDRAM Controller
     // ========================================================================
@@ -1085,6 +1092,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * write data requests can be accepted for SDRAM.
       */
     ram_accept_w := (state_q === STATE_READ || state_q === STATE_WRITE0)
+    dontTouch(ram_accept_w)
 
     // ------------------------------------------------------------------------
     // SDRAM Innput / Output
@@ -1103,5 +1111,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     sdram.dqo := data_q
 
     sdram_data_in_w := sdram.dqi
+
+    ram_wr := ram_wr_w
+    ram_rd := ram_rd_w
+    ram_accept := ram_accept_w
   }
 }

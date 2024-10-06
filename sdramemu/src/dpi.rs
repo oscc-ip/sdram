@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
 
-use bytemuck::cast_slice;
+use bytemuck;
 use common::plusarg::PlusArgMatcher;
+use common::MEM_SIZE;
 use rand::Rng;
 use std::ffi::*;
 use std::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, error, info, trace};
 
 use crate::drive::Driver;
 use crate::{OfflineArgs, AXI_SIZE};
@@ -22,15 +23,16 @@ static DPI_TARGET: Mutex<Option<Box<Driver>>> = Mutex::new(None);
 static AWID: Mutex<u8> = Mutex::new(0);
 
 #[derive(Clone, Debug)]
+#[repr(C)]
 pub(crate) struct AxiWritePayload {
     pub(crate) id: u8,
     pub(crate) len: u8,
     pub(crate) addr: u32,
     pub(crate) data: Vec<u32>,
     pub(crate) strb: Vec<u8>,
-    pub(crate) wUser: Vec<u32>,
-    pub(crate) awUser: u32,
-    pub(crate) dataValid: bool,
+    pub(crate) wUser: Vec<u8>,
+    pub(crate) awUser: u8,
+    pub(crate) dataValid: u8,
     pub(crate) burst: u8,
     pub(crate) cache: u8,
     pub(crate) lock: u8,
@@ -45,7 +47,7 @@ impl AxiWritePayload {
         let mut rng = rand::thread_rng();
         let burst_type = rng.gen_range(0..=2);
         let burst_length = if burst_type == 2 {
-            rng.gen_range(2..=8) * 2
+            1 << rng.gen_range(1..=4)
         } else {
             rng.gen_range(0..=15)
         };
@@ -55,16 +57,12 @@ impl AxiWritePayload {
         AxiWritePayload {
             id: *AWID.lock().unwrap(),
             len: burst_length,
-            addr: rng.gen_range(0..=u32::MAX) / bytes_number * bytes_number,
-            data: (0..burst_length)
-                .map(|_| rng.gen_range(0..=u32::MAX))
-                .collect(),
-            strb: (0..burst_length).map(|_| (1 << burst_size) - 1).collect(),
-            wUser: (0..burst_length)
-                .map(|_| rng.gen_range(0..=u32::MAX))
-                .collect(),
-            awUser: rng.gen_range(0..=u32::MAX),
-            dataValid: true,
+            addr: rng.gen_range(0..=(MEM_SIZE / 2) as u32) / bytes_number * bytes_number,
+            data: (0..100).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
+            strb: (0..100).map(|_| (1 << (burst_size + 1)) - 1).collect(),
+            wUser: (0..100).map(|_| rng.gen_range(0..=u8::MAX)).collect(),
+            awUser: rng.gen_range(0..=u8::MAX),
+            dataValid: 1,
             burst: burst_type,
             cache: 0,
             lock: 0,
@@ -74,13 +72,34 @@ impl AxiWritePayload {
             size: burst_size,
         }
     }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.push(self.id);
+        bytes.push(self.len);
+        bytes.extend(&self.addr.to_le_bytes());
+        for &value in &self.data {
+            bytes.extend(&value.to_le_bytes());
+        }
+        bytes.extend(&self.strb);
+        bytes.extend(&self.wUser);
+        bytes.push(self.awUser);
+        bytes.push(self.dataValid);
+        bytes.push(self.burst);
+        bytes.push(self.cache);
+        bytes.push(self.lock);
+        bytes.push(self.prot);
+        bytes.push(self.qos);
+        bytes.push(self.region);
+        bytes.push(self.size);
+        bytes
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct AxiReadPayload {
     pub(crate) addr: u32,
     pub(crate) id: u8,
-    pub(crate) user: u32,
+    pub(crate) user: u8,
     pub(crate) burst: u8,
     pub(crate) cache: u8,
     pub(crate) len: u8,
@@ -135,10 +154,10 @@ unsafe fn write_to_pointer(dst: *mut u8, data: &[u8]) {
 
 unsafe fn fill_axi_read_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiReadPayload) {}
 
-unsafe fn fill_axi_write_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiWritePayload) {
-    let data_len = 256 * (dlen / 8) as usize;
-    assert!(payload.data.len() <= data_len);
-    write_to_pointer(dst as *mut u8, cast_slice(&payload.data));
+unsafe fn fill_axi_write_payload(dst: *mut SvBitVecVal, payload: &AxiWritePayload) {
+    let data = &payload.to_bytes();
+    info!("data length: {:?}", data.len());
+    write_to_pointer(dst as *mut u8, data);
 }
 
 //----------------------
@@ -176,7 +195,7 @@ unsafe extern "C" fn axi_write_ready_axi4Probe(payload: *mut SvBitVecVal) {
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
     let response = driver.axi_write_ready();
-    fill_axi_write_payload(payload, driver.dlen, &response);
+    fill_axi_write_payload(payload, &response);
 }
 
 /// evaluate at B fire.
@@ -188,7 +207,7 @@ unsafe extern "C" fn axi_write_done_axi4Probe(bid: c_uchar, bresp: c_uchar, buse
     driver.axi_write_done(bid as u8, bresp as u8, buser as u8);
 }
 
-/// evaluate at AW ready.
+/// evaluate at AR ready.
 #[no_mangle]
 unsafe extern "C" fn axi_read_ready_axi4Probe(payload: *mut SvBitVecVal) {
     debug!("axi_read_ready_axi4Probe");
