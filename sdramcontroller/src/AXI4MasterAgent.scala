@@ -111,6 +111,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
         )
         val index = UInt(log2Ceil(parameter.writePayloadSize).W)
         val addrValid = Bool()
+        val writeEnable = Bool()
       }
 
       val awFifo =
@@ -123,8 +124,17 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val wRPtr = RegInit(0.U.asTypeOf(UInt(log2Ceil(parameter.outstanding).W)))
       val awCount = RegInit(0.U(32.W))
       // AW
-      when(channel.AWREADY && !awFifo(awWPtr).payload.dataValid) {
-        awFifo(awWPtr).payload := RawUnclockedNonVoidFunctionCall(
+      val doIssueAWPayload = RegInit(false.B)
+      when(channel.AWREADY && awFifo(awWPtr).payload.dataValid === 0.U && !awFifo(awWPtr).addrValid && !io.reset.asBool) {
+        val payload_wire = WireInit(0.U.asTypeOf(new WritePayload(
+          parameter.writePayloadSize,
+            parameter.axiParameter.idWidth,
+            parameter.axiParameter.addrWidth,
+            parameter.axiParameter.dataWidth,
+            parameter.axiParameter.awUserWidth,
+            parameter.axiParameter.wUserWidth
+        )))
+        payload_wire := RawClockedNonVoidFunctionCall(
           s"axi_write_ready_${parameter.name}",
           new WritePayload(
             parameter.writePayloadSize,
@@ -134,15 +144,19 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
             parameter.axiParameter.awUserWidth,
             parameter.axiParameter.wUserWidth
           )
-        )(when.cond && !io.gateWrite)
-        when(awFifo(awWPtr).payload.dataValid =/= 0.U) {
+        )(io.clock, when.cond && !io.gateWrite)
+        when(doIssueAWPayload && payload_wire.dataValid === 1.U) {
+          awFifo(awWPtr).payload := payload_wire
           awFifo(awWPtr).index := 0.U
           awFifo(awWPtr).addrValid := true.B
+          awFifo(awRPtr).writeEnable := false.B
           awWPtr := awWPtr + 1.U
+        }.elsewhen(!doIssueAWPayload) {
+          doIssueAWPayload := true.B
         }
       }
       channel.AWADDR := awFifo(awRPtr).payload.addr
-      channel.AWVALID := awFifo(awRPtr).addrValid && awRPtr + 1.U =/= wRPtr
+      channel.AWVALID := awFifo(awRPtr).addrValid
       channel.AWSIZE := awFifo(awRPtr).payload.size
       channel.AWBURST := awFifo(awRPtr).payload.burst
       channel.AWLOCK := awFifo(awRPtr).payload.lock
@@ -156,6 +170,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val awFire = channel.AWREADY && channel.AWVALID
       when(awFire) {
         awFifo(awRPtr).addrValid := false.B
+        awFifo(awRPtr).writeEnable := true.B
         awRPtr := awRPtr + 1.U
         awCount := awCount + 1.U
       }
@@ -172,10 +187,10 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       channel.WUSER := awFifo(wRPtr).payload.wUser(
         awFifo(wRPtr).index
       )
-      channel.WLAST := awFifo(wRPtr).index + 1.U >= awFifo(
+      channel.WLAST := awFifo(wRPtr).index >= awFifo(
         wRPtr
       ).payload.len
-      channel.WVALID := awFifo(wRPtr).payload.dataValid
+      channel.WVALID := awFifo(wRPtr).payload.dataValid =/= 0.U && awFifo(wRPtr).writeEnable
       when(wFire) {
         when(channel.WLAST) {
           awFifo(wRPtr).payload.dataValid := 0.U

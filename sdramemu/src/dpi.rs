@@ -1,17 +1,17 @@
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
 
+use crate::drive::Driver;
+use crate::{OfflineArgs, AXI_SIZE};
 use bytemuck;
 use common::plusarg::PlusArgMatcher;
 use common::MEM_SIZE;
+use core::mem;
 use rand::Rng;
 use std::ffi::*;
 use std::sync::Mutex;
-use tracing::{debug, error, info, trace};
-
-use crate::drive::Driver;
-use crate::{OfflineArgs, AXI_SIZE};
 use svdpi::SvScope;
+use tracing::{debug, error, info, trace};
 
 pub type SvBitVecVal = u32;
 
@@ -23,7 +23,6 @@ static DPI_TARGET: Mutex<Option<Box<Driver>>> = Mutex::new(None);
 static AWID: Mutex<u8> = Mutex::new(0);
 
 #[derive(Clone, Debug)]
-#[repr(C)]
 pub(crate) struct AxiWritePayload {
     pub(crate) id: u8,
     pub(crate) len: u8,
@@ -57,18 +56,18 @@ impl AxiWritePayload {
         AxiWritePayload {
             id: *AWID.lock().unwrap(),
             len: burst_length,
-            addr: rng.gen_range(0..=(MEM_SIZE / 2) as u32) / bytes_number * bytes_number,
+            addr: rng.gen_range(0xfc000000..=u32::MAX as u32) / bytes_number * bytes_number,
             data: (0..100).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
             strb: (0..100).map(|_| (1 << (burst_size + 1)) - 1).collect(),
             wUser: (0..100).map(|_| rng.gen_range(0..=u8::MAX)).collect(),
             awUser: rng.gen_range(0..=u8::MAX),
             dataValid: 1,
             burst: burst_type,
-            cache: 0,
-            lock: 0,
-            prot: 0,
-            qos: 0,
-            region: 0,
+            cache: 0x77,
+            lock: 0x88,
+            prot: 0x99,
+            qos: 0xaa,
+            region: 0xbb,
             size: burst_size,
         }
     }
@@ -76,9 +75,9 @@ impl AxiWritePayload {
         let mut bytes = Vec::new();
         bytes.push(self.id);
         bytes.push(self.len);
-        bytes.extend(&self.addr.to_le_bytes());
+        bytes.extend(&self.addr.to_be_bytes());
         for &value in &self.data {
-            bytes.extend(&value.to_le_bytes());
+            bytes.extend(&value.to_be_bytes());
         }
         bytes.extend(&self.strb);
         bytes.extend(&self.wUser);
@@ -91,6 +90,7 @@ impl AxiWritePayload {
         bytes.push(self.qos);
         bytes.push(self.region);
         bytes.push(self.size);
+        bytes.reverse();
         bytes
     }
 }

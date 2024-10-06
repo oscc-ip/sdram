@@ -126,13 +126,14 @@ impl ShadowMem {
                 // let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
                 // if byte_mask {
                 info!(
-                    "writing({:?}) 0x{:x} -> 0x{:x} with strb:{:b}",
+                    "writing({:02x}/{:?}) 0x{:08x} -> 0x{:02x} with strb:{:b}",
+                    payload.id,
                     write_count,
                     (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8,
                     (current_addr + write_count) as usize,
                     payload.strb[item_idx] >> byte_idx & 1
                 );
-                self.mem[(current_addr + write_count) as usize] =
+                self.mem[(current_addr + write_count - 0xfc000000) as usize] =
                     (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8;
                 write_count += 1;
                 // }
@@ -307,7 +308,7 @@ impl Driver {
 
     pub(crate) fn axi_write_ready(&mut self) -> AxiWritePayload {
         trace!("axi_write_ready");
-        let payload = AxiWritePayload::random();
+        let mut payload = AxiWritePayload::random();
         self.axi_write_fifo.push_back(payload.clone());
         self.shadow_mem.write_mem_axi(payload.clone());
         payload
