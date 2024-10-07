@@ -125,7 +125,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val awCount = RegInit(0.U(32.W))
       // AW
       val doIssueAWPayload = RegInit(false.B)
-      when(channel.AWREADY && awFifo(awWPtr).payload.dataValid === 0.U && !awFifo(awWPtr).addrValid && !io.reset.asBool) {
+      when(awFifo(awWPtr).payload.dataValid === 0.U && !awFifo(awWPtr).addrValid && !io.reset.asBool) {
         val payload_wire = WireInit(0.U.asTypeOf(new WritePayload(
           parameter.writePayloadSize,
             parameter.axiParameter.idWidth,
