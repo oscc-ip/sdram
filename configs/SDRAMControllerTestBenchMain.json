@@ -25,15 +25,15 @@
             "supportProt": false
         },
         "sdramParameter": {
-            "dataWidth": 32,
-            "csWidth": 4
+            "dataWidth": 16,
+            "csWidth": 1
         }
     },
     "testVerbatimParameter": {
         "useAsyncReset": false,
         "initFunctionName": "cosim_init",
         "dumpFunctionName": "dump_wave",
-        "clockFlipTick": 1,
+        "clockFlipTick": 5,
         "resetFlipTick": 100
     },
     "timeout": 1000000

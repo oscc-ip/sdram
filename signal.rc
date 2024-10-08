@@ -2,11 +2,11 @@ Magic 271485
 Revision Verdi_V-2023.12
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 25 1920 403 388 101
+viewPort 0 25 1920 490 388 101
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-08-06-39-16/trace.fsdb"
+openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-08-07-17-49/trace.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -15,17 +15,19 @@ openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-08-06-39-
 signalSpacing 5
 
 ; windowTimeUnit is used for zoom, cursor & marker
+windowTimeUnit 1ns
+
 ; waveform viewport range
-zoom 0.000000 1010099990.000000
-cursor 10281000.000000
+zoom 10273.723826 10322.726362 1n
+cursor 10305.000000
 marker 0.000000
 
 ; user define markers
 ; userMarker time_pos marker_name color linestyle
 ; visible top row signal index
-top 22
+top 0
 ; marker line index
-markerPos 35
+markerPos 26
 
 ; event list
 ; addEvent event_name event_expression
@@ -46,7 +48,7 @@ curSTATUS ByChange
 
 
 addGroup "G2"
-activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-08-06-39-16/trace.fsdb"
+activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-08-07-17-49/trace.fsdb"
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 /SDRAMControllerTestBench/dut/clock
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -holdScope reset
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_state[79:0]
@@ -72,8 +74,7 @@ addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_fifo_accept_w
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope write_prio_w
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope read_prio_w
 addSignal -h 15 -UNSIGNED -ASC -holdScope dbg_cmd[79:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope SDRAM_cke[3:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope SDRAM_cs[3:0]
+addSignal -h 15 -holdScope SDRAM_cke
 addSignal -h 15 -holdScope SDRAM_ras
 addSignal -h 15 -holdScope SDRAM_cas
 addSignal -h 15 -holdScope SDRAM_we

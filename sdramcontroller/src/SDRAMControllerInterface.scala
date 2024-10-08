@@ -31,10 +31,10 @@ case class SDRAMControllerParameter(
   require(!axiParameter.supportQos, "doesn't support qos")
   require(!axiParameter.supportResp, "doesn't support resp")
   require(!axiParameter.supportProt, "doesn't support prot")
-  require(
-    axiParameter.dataWidth == sdramParameter.dataWidth,
-    "data width of axi and sdram should same, please inter busip before controller."
-  )
+  // require(
+  //   axiParameter.dataWidth == sdramParameter.dataWidth,
+  //   "data width of axi and sdram should same, please inter busip before controller."
+  // )
 }
 
 class SDRAMControllerInterface(val parameter: SDRAMControllerParameter) extends Record {
