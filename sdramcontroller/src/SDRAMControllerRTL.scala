@@ -235,8 +235,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_requests.io.diag_n := true.B
     u_requests.io.data_in := req_in_r
     req_out_w := u_requests.io.data_out
-    req_out_valid_w := u_requests.io.empty
-    req_fifo_accept_w := u_requests.io.empty
+    req_fifo_accept_w := !u_requests.io.full
 
     dontTouch(u_requests.io)
 
@@ -279,8 +278,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // ------------------------------------------------------------------------
     // AXI4 Request
     // ------------------------------------------------------------------------
-    val write_prio_w = (req_prio_q && !req_hold_rd_q) || req_hold_wr_q
-    val read_prio_w = (!req_prio_q && !req_hold_wr_q) || req_hold_rd_q
+    val write_prio_w = (!req_prio_q && !req_hold_rd_q) || req_hold_wr_q
+    val read_prio_w  =  (req_prio_q && !req_hold_wr_q) || req_hold_rd_q
 
     dontTouch(write_prio_w)
     dontTouch(read_prio_w)
@@ -297,11 +296,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(write_active_w)
     dontTouch(read_active_w)
 
-    // awready：!req_wr_q写掩码不为空、req_fifo_accept_w请求FIFO为空
-    axi.aw.ready := !req_wr_q && req_fifo_accept_w
-    axi.w.ready  :=              req_fifo_accept_w
-    // arready：!req_rd_q读完成-读握手之间、req_fifo_accept_w请求FIFO为空
-    axi.ar.ready := !req_rd_q && req_fifo_accept_w
+    axi.aw.ready := write_active_w && !req_wr_q && ram_accept_w && req_fifo_accept_w;
+    axi.w.ready  := write_active_w &&              ram_accept_w && req_fifo_accept_w;
+    axi.ar.ready := read_active_w  && !req_rd_q && ram_accept_w && req_fifo_accept_w;
     dontTouch(axi.aw.ready)
     dontTouch(axi.w.ready)
     dontTouch(axi.ar.ready)
@@ -315,6 +312,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(addr_w)
 
     val wr_w = write_active_w && axi.w.valid
+    // val wr_w = write_active_w
     val rd_w = read_active_w
 
     dontTouch(wr_w)
@@ -1117,7 +1115,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     ram_accept := ram_accept_w
 
     val dbg_state = WireDefault(BigInt("554e4b4e4f574e", 16).U(80.W))  // "UNKNOWN"
-    switch(state_q) {
+    switch (state_q) {
       is(STATE_INIT)      { dbg_state := BigInt("494e4954", 16).U(80.W) }  // "INIT"
       is(STATE_DELAY)     { dbg_state := BigInt("44454c4159", 16).U(80.W) }  // "DELAY"
       is(STATE_IDLE)      { dbg_state := BigInt("49444c45", 16).U(80.W) }  // "IDLE"
@@ -1128,6 +1126,17 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       is(STATE_WRITE1)    { dbg_state := BigInt("575249544531", 16).U(80.W) }  // "WRITE1"
       is(STATE_PRECHARGE) { dbg_state := BigInt("505245434841524745", 16).U(80.W) }  // "PRECHARGE"
       is(STATE_REFRESH)   { dbg_state := BigInt("52454652455348", 16).U(80.W) }  // "REFRESH"
+    }
+
+    val dbg_cmd = WireDefault(BigInt("554e4b4e4f574e", 16).U(80.W)) // "UNKNOWN"
+    switch (command_q) {
+      is (CMD_NOP)       { dbg_cmd := BigInt("4E4F50", 16).U(80.W) } // "NOP"
+      is (CMD_LMR)       { dbg_cmd := BigInt("4C4D52", 16).U(80.W) } // "LMR"
+      is (CMD_ACTIVE)    { dbg_cmd := BigInt("414354495645", 16).U(80.W) } // "ACTIVE"
+      is (CMD_READ)      { dbg_cmd := BigInt("52454144", 16).U(80.W) } // "READ"
+      is (CMD_WRITE)     { dbg_cmd := BigInt("5752495445", 16).U(80.W) } // "WRITE"
+      is (CMD_PRECHARGE) { dbg_cmd := BigInt("505245434841524745", 16).U(80.W) } // "PRECHARGE"
+      is (CMD_REFRESH)   { dbg_cmd := BigInt("52454652455348", 16).U(80.W) } // "REFRESH"
     }
   }
 }
