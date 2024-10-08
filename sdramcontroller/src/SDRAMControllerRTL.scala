@@ -666,7 +666,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      * |            |         0110         | BURST TERMINATE                                   |
      * +------------+----------------------+---------------------------------------------------+
      */
-    // next_state_r := state_q
     target_state_r := target_state_q
 
     switch(state_q) {
@@ -793,22 +792,21 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val DELAY_W = 4
 
     /** SDRAM Delay (Current) */
-    val delay_q = RegInit(0.U(DELAY_W.W))
+    val delay_w = WireInit(0.U(DELAY_W.W))
     /** SDRAM Delay (Next) */
     val delay_r = RegInit(0.U(DELAY_W.W))
 
-    dontTouch(delay_q)
+    dontTouch(delay_w)
     dontTouch(delay_r)
 
     delay_r := 0.U(DELAY_W.W)
 
     switch(state_q) {
       is(STATE_ACTIVATE) {
-        delay_r := SDRAM_CYCLES_TRCD.asUInt
+        delay_w := SDRAM_CYCLES_TRCD.asUInt
       }
       is(STATE_READ_WAIT) {
-        delay_r := SDRAM_READ_LATENCY.asUInt
-
+        delay_w := SDRAM_READ_LATENCY.asUInt
         /** When READ request come, open row and active row hit at the same
           * time, don't delay.
           */
@@ -817,18 +815,22 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
             row_open_q(addr_bank_w) &&
               (addr_row_w === active_row_q(addr_bank_w))
           ) {
-            delay_r := 0.U(DELAY_W.W)
+            delay_w := 0.U(DELAY_W.W)
           }
         }
       }
       is(STATE_PRECHARGE) {
-        delay_r := SDRAM_CYCLES_TRP.asUInt
+        delay_w := SDRAM_CYCLES_TRP.asUInt
       }
       is(STATE_REFRESH) {
-        delay_r := SDRAM_CYCLES_TRFC.asUInt
+        delay_w := SDRAM_CYCLES_TRFC.asUInt
       }
+    }
+    delay_r := delay_w
+
+    switch(state_q) {
       is(STATE_DELAY) {
-        delay_r := delay_q - 1.U(DELAY_W.W)
+        delay_r := delay_r - 1.U(DELAY_W.W)
       }
     }
 
@@ -841,15 +843,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     }
 
     /** Update actual state */
-    when (delay_r =/= 0.U(DELAY_W.W)) {
+    when (delay_w =/= 0.U(DELAY_W.W)) {
       state_q := STATE_DELAY
     }
-    .otherwise {
+    .elsewhen (delay_r === 0.U(DELAY_W.W)) {
       state_q := next_state_r;
     }
-
-    /** Record delay state */
-    delay_q := delay_r
 
     // ------------------------------------------------------------------------
     // SDRAM Refresh Operation
