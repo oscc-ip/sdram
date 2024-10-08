@@ -1115,5 +1115,19 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     ram_wr := ram_wr_w
     ram_rd := ram_rd_w
     ram_accept := ram_accept_w
+
+    val dbg_state = WireDefault(BigInt("554e4b4e4f574e", 16).U(80.W))  // "UNKNOWN"
+    switch(state_q) {
+      is(STATE_INIT)      { dbg_state := BigInt("494e4954", 16).U(80.W) }  // "INIT"
+      is(STATE_DELAY)     { dbg_state := BigInt("44454c4159", 16).U(80.W) }  // "DELAY"
+      is(STATE_IDLE)      { dbg_state := BigInt("49444c45", 16).U(80.W) }  // "IDLE"
+      is(STATE_ACTIVATE)  { dbg_state := BigInt("4143544956415445", 16).U(80.W) }  // "ACTIVATE"
+      is(STATE_READ)      { dbg_state := BigInt("52454144", 16).U(80.W) }  // "READ"
+      is(STATE_READ_WAIT) { dbg_state := BigInt("524541445f57414954", 16).U(80.W) }  // "READ_WAIT"
+      is(STATE_WRITE0)    { dbg_state := BigInt("575249544530", 16).U(80.W) }  // "WRITE0"
+      is(STATE_WRITE1)    { dbg_state := BigInt("575249544531", 16).U(80.W) }  // "WRITE1"
+      is(STATE_PRECHARGE) { dbg_state := BigInt("505245434841524745", 16).U(80.W) }  // "PRECHARGE"
+      is(STATE_REFRESH)   { dbg_state := BigInt("52454652455348", 16).U(80.W) }  // "REFRESH"
+    }
   }
 }
