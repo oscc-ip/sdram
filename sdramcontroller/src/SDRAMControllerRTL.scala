@@ -578,7 +578,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM Open Row Enable (Every bit represents different bank) */
     val row_open_q = RegInit(0.U(SDRAM_BANK_N.W))
     /** SDRAM Active Row Enable */
-    val active_row_q = VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_ROW_W.W))
+    val active_row_q = RegInit(VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_ROW_W.W)))
     /** Current State */
     val state_q = RegInit(STATE_INIT)
     /** Next State */
@@ -621,14 +621,17 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(delay_state_q)
 
     /** SDRAM Column Address (Current) */
+    // {4'b0, ram_addr_w[9 : 2], 1'b0}
     val addr_col_w = Cat(
       Fill(SDRAM_ROW_W - SDRAM_COL_W, 0.U(1.W)),
       ram_addr_w(SDRAM_COL_W, 2),
       0.U(1.W)
     )
     /** SDRAM Row Address (Current) */
+    // ram_addr_w[24 : 12]
     val addr_row_w = ram_addr_w(SDRAM_ADDR_W, SDRAM_COL_W + 2 + 1)
     /** SDRAM Bank Address (Current) */
+    // ram_addr_w[11 : 10]
     val addr_bank_w = ram_addr_w(SDRAM_COL_W + 2, SDRAM_COL_W + 2 - 1)
 
     dontTouch(addr_col_w)
@@ -884,7 +887,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     when(refresh_timer_q === 0.U(REFRESH_CNT_W.W)) {
       refresh_q := true.B
     }
-    .otherwise {
+    .elsewhen (state_q === STATE_REFRESH) {
       refresh_q := false.B
     }
 
