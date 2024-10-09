@@ -578,7 +578,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** SDRAM Open Row Enable (Every bit represents different bank) */
     val row_open_q = RegInit(0.U(SDRAM_BANK_N.W))
     /** SDRAM Active Row Enable */
-    val active_row_q = VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_BANK_W.W))
+    val active_row_q = VecInit.fill(SDRAM_BANK_N)(0.U(SDRAM_ROW_W.W))
     /** Current State */
     val state_q = RegInit(STATE_INIT)
     /** Next State */
