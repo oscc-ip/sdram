@@ -918,20 +918,20 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       is(STATE_INIT) {
         when(refresh_timer_q === 50.U) {
           cke_q := true.B
-        }.elsewhen(refresh_timer_q === 40.U) {
+        }
+        .elsewhen(refresh_timer_q === 40.U) {
           command_q := CMD_PRECHARGE
-          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 1.U(1.W)
-          addr_q := Cat(
-            addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1),
-            1.U,
-            addr_q(BIT_ALL_BANKS - 1, 0)
-          )
-        }.elsewhen(refresh_timer_q === 20.U || refresh_timer_q === 30.U) {
+          /** Precharge all banks */
+          addr_q := addr_q | (1.U(1.W) << BIT_ALL_BANKS)
+        }
+        .elsewhen(refresh_timer_q === 20.U || refresh_timer_q === 30.U) {
           command_q := CMD_REFRESH
-        }.elsewhen(refresh_timer_q === 10.U) {
+        }
+        .elsewhen(refresh_timer_q === 10.U) {
           command_q := CMD_LMR
           addr_q := MODE_REGISTER
-        }.otherwise {
+        }
+        .otherwise {
           command_q := CMD_NOP
           addr_q := 0.U(SDRAM_ROW_W.W)
           bank_q := 0.U(SDRAM_BANK_W.W)
@@ -943,57 +943,22 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         bank_q := addr_bank_w
 
         active_row_q(addr_bank_w) := addr_row_w
-        // TODO: fix me: row_open_q(addr_bank_w) := 1.U(1.W)
-        row_open_q := MuxLookup(addr_bank_w, row_open_q)(
-          Seq(
-            0.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 1), 1.U),
-            1.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 2), 1.U, row_open_q(0)),
-            2.U -> Cat(
-              row_open_q(SDRAM_BANK_N - 1, 3),
-              1.U,
-              row_open_q(SDRAM_BANK_N - 3, 0)
-            ),
-            3.U -> Cat(1.U, row_open_q(SDRAM_BANK_N - 2, 0))
-          )
-        )
+        row_open_q := row_open_q | (1.U(1.W) << addr_bank_w)
       }
       is(STATE_PRECHARGE) {
         command_q := CMD_PRECHARGE
         when(target_state_r === STATE_REFRESH) {
-          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 1.U(1.W)
           /** Precharge all banks */
-          addr_q := Cat(
-            addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1),
-            1.U,
-            addr_q(BIT_ALL_BANKS - 1, 0)
-          )
-
+          addr_q := addr_q | (1.U(1.W) << BIT_ALL_BANKS)
           /** Close all open rows */
           row_open_q := 0.U(SDRAM_BANK_N.W)
         }
         .otherwise {
-          // TODO: fix me: addr_q(BIT_ALL_BANKS) := 0.U(1.W)
           /** Precharge specific bank */
-          addr_q := Cat(
-            addr_q(SDRAM_ROW_W - 1, BIT_ALL_BANKS + 1),
-            0.U,
-            addr_q(BIT_ALL_BANKS - 1, 0)
-          )
+          addr_q := addr_q | (0.U(1.W) << BIT_ALL_BANKS)
           bank_q := addr_bank_w
-          // TODO: fix me: row_open_q(addr_bank_w) := 0.U(1.W)
           /** Close specific open row */
-          row_open_q := MuxLookup(addr_bank_w, row_open_q)(
-            Seq(
-              0.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 1), 0.U),
-              1.U -> Cat(row_open_q(SDRAM_BANK_N - 1, 2), 0.U, row_open_q(0)),
-              2.U -> Cat(
-                row_open_q(SDRAM_BANK_N - 1, 3),
-                0.U,
-                row_open_q(SDRAM_BANK_N - 3, 0)
-              ),
-              3.U -> Cat(1.U, row_open_q(SDRAM_BANK_N - 2, 0))
-            )
-          )
+          row_open_q := row_open_q | (0.U(1.W) << addr_bank_w)
         }
       }
       is(STATE_REFRESH) {
@@ -1003,31 +968,18 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       }
       is(STATE_READ) {
         command_q := CMD_READ
-        addr_q := addr_col_w
+        /** Disable AUTO PRECHARGE (auto close of row) */
+        addr_q := addr_col_w | (0.U(1.W) << BIT_AUTO_PRECHARGE)
         bank_q := addr_bank_w
 
-        // TODO: fix me: addr_q(BIT_AUTO_PRECHARGE) := 0.U(1.W)
-        /** Disable AUTO PRECHARGE (auto close of row) */
-        addr_q := Cat(
-          addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1),
-          0.U,
-          addr_q(BIT_AUTO_PRECHARGE - 1, 0)
-        )
         dqm_q := 0.U(SDRAM_DQM_W.W)
       }
       is(STATE_WRITE0) {
         command_q := CMD_WRITE
-        addr_q := addr_col_w
+        /** Disable AUTO PRECHARGE (auto close of row) */
+        addr_q := addr_col_w | (0.U(1.W) << BIT_AUTO_PRECHARGE)
         bank_q := addr_bank_w
         data_q := ram_write_data_w(15, 0)
-
-        // TODO: fix me: addr_q(BIT_AUTO_PRECHARGE) := 0.U(1.W)
-        /** Disable AUTO PRECHARGE (auto close of row) */
-        addr_q := Cat(
-          addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1),
-          0.U,
-          addr_q(BIT_AUTO_PRECHARGE - 1, 0)
-        )
 
         /** Because data width is 16 bit, only 2 bits are needed to implement
           * byte mask. Low effective.
@@ -1041,13 +993,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         command_q := CMD_NOP
         data_q := data_buffer_q
 
-        // TODO: fix me: addr_q(BIT_AUTO_PRECHARGE) := 0.U(1.W)
         /** Disable AUTO PRECHARGE (auto close of row) */
-        addr_q := Cat(
-          addr_q(SDRAM_ROW_W - 1, BIT_AUTO_PRECHARGE + 1),
-          0.U,
-          addr_q(BIT_AUTO_PRECHARGE - 1, 0)
-        )
+        addr_q := addr_q | (0.U(1.W) << BIT_AUTO_PRECHARGE)
+
         dqm_q := dqm_buffer_q
       }
     }
