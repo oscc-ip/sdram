@@ -311,8 +311,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     dontTouch(addr_w)
 
-    val wr_w = write_active_w && axi.w.valid
-    // val wr_w = write_active_w
+    // val wr_w = write_active_w && axi.w.valid
+    val wr_w = write_active_w
     val rd_w = read_active_w
 
     dontTouch(wr_w)
@@ -385,12 +385,15 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val SDRAM_DQM_W = 2
 
     /** SDRAM Row Width */
+    // 13
     val SDRAM_ROW_W = SDRAM_ADDR_W - SDRAM_COL_W - SDRAM_BANK_W
 
     /** SDRAM Refresh Counter */
+    // 8192 = 1 << 13
     val SDRAM_REFRESH_CNT = 1 << SDRAM_ROW_W
 
     /** SDRAM INIT time (100us) */
+    // 5000 = 100000 / (1000 / 50)
     val SDRAM_TIME_INIT = 100000 / (1000 / SDRAM_MHZ)
 
     /** SDRAM Timing Parameters */
@@ -407,6 +410,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val SDRAM_CYCLES_TRFC = (60 + (SDRAM_CYCLE_NS - 1)) / SDRAM_CYCLE_NS
 
     /** Cycles of REFRESH */
+    // 390 = 64000 * 50 / 8192
     val SDRAM_CYCLES_REFRESH = (64000 * SDRAM_MHZ) / SDRAM_REFRESH_CNT - 1
 
     /** The NO OPERATION (NOP) command is used to perform a NOP to the selected
@@ -578,13 +582,17 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** Current State */
     val state_q = RegInit(STATE_INIT)
     /** Next State */
-    val next_state_r = RegInit(0.U(STATE_W.W))
+    val next_state_r = RegInit(STATE_INIT)
+    /** Next State wire*/
+    val next_state_r_w = WireInit(STATE_INIT)
     /** Target State (Next). When current state is ACTIVATE, use it to indicate
       * whether next state is READ or WRITE. When current state is PRECHARGE,
       * REFRESH priority is higher than ACTIVE, if target state is REFRESH, let
       * next state is REFRESH, otherwise is ACTIVATE.
       */
-    val target_state_r = RegInit(0.U(STATE_W.W))
+    val target_state_r = RegInit(STATE_IDLE)
+    /** Target State (Next) wire */
+    val target_state_r_w = WireInit(STATE_IDLE)
     /** Target State (Current) */
     val target_state_q = RegInit(STATE_IDLE)
     /** Deleay State (Used for all delay operations) */
@@ -606,7 +614,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(active_row_q)
     dontTouch(state_q)
     dontTouch(next_state_r)
+    dontTouch(next_state_r_w)
     dontTouch(target_state_r)
+    dontTouch(target_state_r_w)
     dontTouch(target_state_q)
     dontTouch(delay_state_q)
 
@@ -666,13 +676,15 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      * |            |         0110         | BURST TERMINATE                                   |
      * +------------+----------------------+---------------------------------------------------+
      */
-    target_state_r := target_state_q
+
+    next_state_r_w := state_q
+    target_state_r_w := target_state_q
 
     switch(state_q) {
       /** Next State is IDLE, when the number of refresh is reached. */
       is(STATE_INIT) {
         when(refresh_q) {
-          next_state_r := STATE_IDLE
+          next_state_r_w := STATE_IDLE
         }
       }
       /** IDLE is the most important STATE, it determine which state to jump to
@@ -683,10 +695,10 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         when(refresh_q) {
           /** Close open rows, then refresh */
           when(row_open_q =/= 0.U) {
-            next_state_r := STATE_PRECHARGE
+            next_state_r_w := STATE_PRECHARGE
           }
           .otherwise {
-            next_state_r := STATE_REFRESH
+            next_state_r_w := STATE_REFRESH
           }
           target_state_r := STATE_REFRESH
         }
@@ -697,14 +709,14 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
               (addr_row_w === active_row_q(addr_bank_w))
           ) {
             when(!ram_rd_w) {
-              next_state_r := STATE_WRITE0
+              next_state_r_w := STATE_WRITE0
             }.otherwise {
-              next_state_r := STATE_READ
+              next_state_r_w := STATE_READ
             }
           }
           /** Open row miss, close it and open new row */
           .elsewhen(row_open_q(addr_bank_w)) {
-            next_state_r := STATE_PRECHARGE
+            next_state_r_w := STATE_PRECHARGE
             when(!ram_rd_w) {
               target_state_r := STATE_WRITE0
             }.otherwise {
@@ -713,7 +725,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           }
           /** No open row, open row */
           .otherwise {
-            next_state_r := STATE_ACTIVATE
+            next_state_r_w := STATE_ACTIVATE
             when(!ram_rd_w) {
               target_state_r := STATE_WRITE0
             }.otherwise {
@@ -727,43 +739,43 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         * corresponding READ or WRITE state.
         */
       is(STATE_ACTIVATE) {
-        next_state_r := target_state_r
+        next_state_r_w := target_state_r
       }
       /** Next State is READ_WAIT */
       is(STATE_READ) {
-        next_state_r := STATE_READ_WAIT
+        next_state_r_w := STATE_READ_WAIT
       }
       /** Default next state is IDLE, but if another READ request with no
         * refresh come, and its bank hits and row is active, next state is still
         * READ.
         */
       is(STATE_READ_WAIT) {
-        next_state_r := STATE_IDLE
+        next_state_r_w := STATE_IDLE
         when(!refresh_q && ram_req_w && ram_rd_w) {
           when(
             row_open_q(addr_bank_w) &&
               (addr_row_w === active_row_q(addr_bank_w))
           ) {
-            next_state_r := STATE_READ
+            next_state_r_w := STATE_READ
           }
         }
       }
       /** Next State is WRITE1 */
       is(STATE_WRITE0) {
-        next_state_r := STATE_WRITE1
+        next_state_r_w := STATE_WRITE1
       }
       /** Default next state is IDLE, but if another WRITE request with no
         * refresh come, and its bank hits and row is active, next state is still
         * WRITE.
         */
       is(STATE_WRITE1) {
-        next_state_r := STATE_IDLE
+        next_state_r_w := STATE_IDLE
         when(!refresh_q && ram_req_w && ram_wr_w =/= 0.U) {
           when(
             row_open_q(addr_bank_w) &&
               (addr_row_w === active_row_q(addr_bank_w))
           ) {
-            next_state_r := STATE_WRITE0
+            next_state_r_w := STATE_WRITE0
           }
         }
       }
@@ -772,19 +784,20 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         */
       is(STATE_PRECHARGE) {
         when(target_state_r === STATE_REFRESH) {
-          next_state_r := STATE_REFRESH
+          next_state_r_w := STATE_REFRESH
         }.otherwise {
-          next_state_r := STATE_ACTIVATE
+          next_state_r_w := STATE_ACTIVATE
         }
       }
       /** Next State is IDLE */
       is(STATE_REFRESH) {
-        next_state_r := STATE_IDLE
+        next_state_r_w := STATE_IDLE
       }
       is(STATE_DELAY) {
-        next_state_r := delay_state_q
+        next_state_r_w := delay_state_q
       }
     }
+    next_state_r := next_state_r_w
 
     // ------------------------------------------------------------------------
     // SDRAM Delay Operation
@@ -830,7 +843,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     switch(state_q) {
       is(STATE_DELAY) {
-        delay_r := delay_r - 1.U(DELAY_W.W)
+        delay_r := Mux(delay_r =/= 0.U(DELAY_W.W), delay_r - 1.U(DELAY_W.W), delay_r)
       }
     }
 
@@ -838,7 +851,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     target_state_q := target_state_r
 
     /** Record delayed state */
-    when (state_q =/= STATE_DELAY && delay_r =/= 0.U(DELAY_W.W)) {
+    when (state_q === STATE_DELAY && delay_r =/= 0.U(DELAY_W.W)) {
       delay_state_q := next_state_r
     }
 
@@ -847,7 +860,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       state_q := STATE_DELAY
     }
     .elsewhen (delay_r === 0.U(DELAY_W.W)) {
-      state_q := next_state_r;
+      state_q := next_state_r_w;
     }
 
     // ------------------------------------------------------------------------

@@ -33,7 +33,7 @@
         "useAsyncReset": false,
         "initFunctionName": "cosim_init",
         "dumpFunctionName": "dump_wave",
-        "clockFlipTick": 5,
+        "clockFlipTick": 10,
         "resetFlipTick": 100
     },
     "timeout": 1000000
