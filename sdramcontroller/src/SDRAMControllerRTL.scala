@@ -591,8 +591,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * next state is REFRESH, otherwise is ACTIVATE.
       */
     val target_state_r = RegInit(STATE_IDLE)
-    /** Target State (Next) wire */
-    val target_state_r_w = WireInit(STATE_IDLE)
     /** Target State (Current) */
     val target_state_q = RegInit(STATE_IDLE)
     /** Deleay State (Used for all delay operations) */
@@ -616,7 +614,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(next_state_r)
     dontTouch(next_state_r_w)
     dontTouch(target_state_r)
-    dontTouch(target_state_r_w)
     dontTouch(target_state_q)
     dontTouch(delay_state_q)
 
@@ -681,7 +678,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      */
 
     next_state_r_w := state_q
-    target_state_r_w := target_state_q
+    target_state_r := target_state_q
 
     switch(state_q) {
       /** Next State is IDLE, when the number of refresh is reached. */
