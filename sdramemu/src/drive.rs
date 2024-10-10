@@ -122,17 +122,23 @@ impl ShadowMem {
 
             let mut write_count = 0;
 
+            info!(
+                "writing(0x{:02x}) 0x{:08x} -> 0x{:08x}/{:#} with strb:0b{:08b}",
+                payload.id,
+                payload.data[item_idx as usize],
+                current_addr,
+                match payload.burst {
+                    0 => "FIX",
+                    1 => "INCR",
+                    2 => "WARP",
+                    _ => "UNKNOWN",
+                },
+                payload.strb[item_idx]
+            );
+
             for byte_idx in 0..AXI_SIZE / 8 {
                 // let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
                 // if byte_mask {
-                info!(
-                    "writing({:02x}/{:?}) 0x{:08x} -> 0x{:02x} with strb:{:b}",
-                    payload.id,
-                    write_count,
-                    (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8,
-                    (current_addr + write_count) as usize,
-                    payload.strb[item_idx] >> byte_idx & 1
-                );
                 self.mem[(current_addr + write_count - 0xfc000000) as usize] =
                     (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8;
                 write_count += 1;

@@ -3,7 +3,6 @@
 
 use crate::drive::Driver;
 use crate::{OfflineArgs, AXI_SIZE};
-use bytemuck;
 use common::plusarg::PlusArgMatcher;
 use common::MEM_SIZE;
 use core::mem;
@@ -76,11 +75,11 @@ impl AxiWritePayload {
         bytes.push(self.id);
         bytes.push(self.len);
         bytes.extend(&self.addr.to_be_bytes());
-        for &value in &self.data {
+        for &value in self.data.iter().rev() {
             bytes.extend(&value.to_be_bytes());
         }
-        bytes.extend(&self.strb);
-        bytes.extend(&self.wUser);
+        bytes.extend(self.strb.iter().rev());
+        bytes.extend(self.wUser.iter().rev());
         bytes.push(self.awUser);
         bytes.push(self.dataValid);
         bytes.push(self.burst);

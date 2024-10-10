@@ -12,7 +12,6 @@ svdpi = { version = "0.0.1" }
 tracing = "0.1.40"
 hex = "0.4.3"
 rand = "0.8"
-bytemuck = { version = "1.18.0", features = ["derive"] }
 
 [features]
 sv2023 = ["svdpi/sv2023"]
