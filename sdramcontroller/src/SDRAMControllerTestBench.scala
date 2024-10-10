@@ -58,7 +58,6 @@ class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter)
       )
     )
   ).tap(_.suggestName(s"axi4_channel_probe"))
-  val w9825g6kb = Instantiate(new W9825G6KH)
 
   val initFlag = RegInit(false.B)
   dut.io := DontCare
@@ -78,8 +77,7 @@ class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter)
   val hasBeenReset = RegNext(true.B, false.B)
 
   // For each timeout ticks, check it
-  val (_, callWatchdog) = Counter(true.B, parameter.timeout / 2)
-  val watchdogCode = RawUnclockedNonVoidFunctionCall("cosim_watchdog", UInt(8.W))(callWatchdog)
+  val watchdogCode = RawClockedNonVoidFunctionCall("cosim_watchdog", UInt(8.W))(agent.io.clock, true.B)
   when(watchdogCode =/= 0.U) {
     stop(cf"""{"event":"SimulationStop","reason": ${watchdogCode}}\n""")
   }
@@ -87,7 +85,7 @@ class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter)
   /** SDRAM <-> DUT */
   Seq
     .fill(parameter.sdramControllerParameter.sdramParameter.csWidth) {
-      w9825g6kb.io
+      Instantiate(new W9825G6KH).io
     }
     .zipWithIndex
     .foreach { case (bundle, index) =>
