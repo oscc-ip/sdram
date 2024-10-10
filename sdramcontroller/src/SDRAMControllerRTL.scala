@@ -28,11 +28,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     MuxLookup(axType, addr + 4.U)(
       Seq(
         FIXED -> addr,
+        INCR -> (addr + 4.U),
         WARP -> {
           val mask = Cat(axLen, "b11".U(2.W))
           (addr & (~mask).asUInt) | ((addr + 4.U) & mask)
-        },
-        INCR -> (addr + 4.U)
+        }
       )
     )
 
@@ -221,12 +221,15 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     ))
     u_requests.io.clk := clock
     u_requests.io.rst_n := !reset
-    u_requests.io.push_req_n := !req_push_w
-    u_requests.io.pop_req_n := !resp_accept_w
-    u_requests.io.diag_n := true.B
+
     u_requests.io.data_in := req_in_r
-    req_out_w := u_requests.io.data_out
+    u_requests.io.push_req_n := !req_push_w
     req_fifo_accept_w := !u_requests.io.full
+
+    u_requests.io.diag_n := true.B
+    u_requests.io.pop_req_n := !resp_accept_w
+    req_out_w := u_requests.io.data_out
+    req_out_valid_w := !u_requests.io.empty
 
     dontTouch(u_requests.io)
 
@@ -257,10 +260,12 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     ))
     u_response.io.clk := clock
     u_response.io.rst_n := !reset
-    u_response.io.push_req_n := !ram_ack_w
-    u_response.io.pop_req_n := !resp_accept_w
-    u_response.io.diag_n := true.B
+
     u_response.io.data_in := ram_read_data_w
+    u_response.io.push_req_n := !ram_ack_w
+
+    u_response.io.diag_n := true.B
+    u_response.io.pop_req_n := !resp_accept_w
     axi.r.bits.data := u_response.io.data_out
     resp_valid_w := !u_response.io.empty
 

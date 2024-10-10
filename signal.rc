@@ -2,11 +2,11 @@ Magic 271485
 Revision Verdi_V-2023.12
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 25 1920 744 388 134
+viewPort 0 25 1920 644 388 134
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-09-13-17-35/trace.fsdb"
+openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-09-14-09-06/trace.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -18,16 +18,16 @@ signalSpacing 5
 windowTimeUnit 1ns
 
 ; waveform viewport range
-zoom 102143.670207 102636.051203 1n
-cursor 102330.000000
+zoom 102203.257311 102814.670266 1n
+cursor 102470.000000
 marker 0.000000
 
 ; user define markers
 ; userMarker time_pos marker_name color linestyle
 ; visible top row signal index
-top 21
+top 46
 ; marker line index
-markerPos 35
+markerPos 53
 
 ; event list
 ; addEvent event_name event_expression
@@ -48,7 +48,7 @@ curSTATUS ByChange
 
 
 addGroup "G1"
-activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-09-13-17-35/trace.fsdb"
+activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-09-14-09-06/trace.fsdb"
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 /SDRAMControllerTestBench/dut/clock
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -holdScope reset
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_state[79:0]
@@ -73,17 +73,15 @@ addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope active_r
 addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope active_row_q_3[12:0]
 addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope ram_req_w
 addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope ram_wr_w[3:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -holdScope ram_accept_w
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_wr_q
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_rd_q
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_len_q[7:0]
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_id_q[3:0]
-addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_axburst_q[1:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope req_axburst_q[1:0]
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_axlen_q[7:0]
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_addr_q[31:0]
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_prio_q
-addSignal -h 15 -holdScope write_active_w
-addSignal -h 15 -holdScope read_active_w
-addSignal -h 15 -holdScope ram_accept_w
 addSignal -h 15 -holdScope AXI_AWVALID
 addSignal -h 15 -holdScope AXI_AWREADY
 addSignal -h 15 -UNSIGNED -HEX -holdScope AXI_AWADDR[31:0]
@@ -100,17 +98,31 @@ addSignal -h 15 -holdScope AXI_BREADY
 addSignal -h 15 -holdScope AXI_ARVALID
 addSignal -h 15 -holdScope AXI_ARREADY
 addSignal -h 15 -UNSIGNED -HEX -holdScope AXI_ARADDR[31:0]
-addSignal -h 15 -holdScope req_fifo_accept_w
+addSignal -h 15 -holdScope write_active_w
+addSignal -h 15 -holdScope read_active_w
 addSignal -h 15 -holdScope write_prio_w
 addSignal -h 15 -holdScope read_prio_w
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_cmd[79:0]
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -UNSIGNED -UDEC -holdScope SDRAM_a[12:0]
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_ba[1:0]
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_dqo[15:0]
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -holdScope SDRAM_cke
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -holdScope SDRAM_ras
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -holdScope SDRAM_cas
-addSignal -c ID_PURPLE2 -ls solid -lw 1 -h 15 -holdScope SDRAM_we
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_in_r[5:0]
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope req_push_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope req_fifo_accept_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_accept_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope req_out_w[5:0]
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope req_out_valid_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_is_write_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_is_read_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_is_last_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope resp_id_w[3:0]
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope ram_read_data_w[31:0]
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope ram_ack_w
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_valid_w
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_cmd[79:0]
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -UNSIGNED -UDEC -holdScope SDRAM_a[12:0]
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_ba[1:0]
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope SDRAM_dqo[15:0]
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -holdScope SDRAM_cke
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -holdScope SDRAM_ras
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -holdScope SDRAM_cas
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 -holdScope SDRAM_we
 addGroup "G2"
 
 ; getSignalForm Scope Hierarchy Status
