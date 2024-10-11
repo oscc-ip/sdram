@@ -21,6 +21,22 @@ pub type SvBitVecVal = u32;
 static DPI_TARGET: Mutex<Option<Box<Driver>>> = Mutex::new(None);
 static AWID: Mutex<u8> = Mutex::new(0);
 
+pub trait ToBytes {
+    fn to_bytes(&self) -> Vec<u8>;
+}
+
+impl ToBytes for u32 {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
+impl ToBytes for Vec<u32> {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.iter().flat_map(|&value| value.to_bytes()).collect()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct AxiWritePayload {
     pub(crate) id: u8,
@@ -51,8 +67,7 @@ impl AxiWritePayload {
         };
         let burst_size: u8 = rng.gen_range(0..=7 - AXI_SIZE.leading_zeros()) as u8;
         let bytes_number = 1 << burst_size;
-        *AWID.lock().unwrap() += 1;
-        AxiWritePayload {
+        let payload = AxiWritePayload {
             id: *AWID.lock().unwrap(),
             len: burst_length,
             addr: rng.gen_range(0xfc000000..=u32::MAX as u32) / bytes_number * bytes_number,
@@ -68,28 +83,30 @@ impl AxiWritePayload {
             qos: 0xaa,
             region: 0xbb,
             size: burst_size,
-        }
+        };
+        *AWID.lock().unwrap() += 1;
+        payload
     }
-    pub fn to_bytes(&self) -> Vec<u8> {
+}
+
+impl ToBytes for AxiWritePayload {
+    fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.push(self.id);
-        bytes.push(self.len);
-        bytes.extend(&self.addr.to_be_bytes());
-        for &value in self.data.iter().rev() {
-            bytes.extend(&value.to_be_bytes());
-        }
-        bytes.extend(self.strb.iter().rev());
-        bytes.extend(self.wUser.iter().rev());
-        bytes.push(self.awUser);
-        bytes.push(self.dataValid);
-        bytes.push(self.burst);
-        bytes.push(self.cache);
-        bytes.push(self.lock);
-        bytes.push(self.prot);
-        bytes.push(self.qos);
-        bytes.push(self.region);
         bytes.push(self.size);
-        bytes.reverse();
+        bytes.push(self.region);
+        bytes.push(self.qos);
+        bytes.push(self.prot);
+        bytes.push(self.lock);
+        bytes.push(self.cache);
+        bytes.push(self.burst);
+        bytes.push(self.dataValid);
+        bytes.push(self.awUser);
+        bytes.extend(self.wUser.iter());
+        bytes.extend(self.strb.iter());
+        bytes.extend(self.data.to_bytes());
+        bytes.extend(&self.addr.to_bytes());
+        bytes.push(self.len);
+        bytes.push(self.id);
         bytes
     }
 }
@@ -107,7 +124,7 @@ pub(crate) struct AxiReadPayload {
     pub(crate) qos: u8,
     pub(crate) region: u8,
     pub(crate) size: u8,
-    pub(crate) valid: bool,
+    pub(crate) valid: u8,
 }
 
 impl AxiReadPayload {
@@ -125,10 +142,10 @@ impl AxiReadPayload {
             qos: rng.gen_range(0..=15),
             region: rng.gen_range(0..=15),
             size: rng.gen_range(0..=15),
-            valid: true,
+            valid: 1,
         }
     }
-    pub(crate) fn from_write_payload(payload: AxiWritePayload) -> Self {
+    pub(crate) fn from_write_payload(payload: &AxiWritePayload) -> Self {
         AxiReadPayload {
             addr: payload.addr,
             id: payload.id,
@@ -141,22 +158,38 @@ impl AxiReadPayload {
             qos: payload.qos,
             region: payload.region,
             size: payload.size,
-            valid: true,
+            valid: 1,
         }
     }
 }
 
-unsafe fn write_to_pointer(dst: *mut u8, data: &[u8]) {
-    let dst = std::slice::from_raw_parts_mut(dst, data.len());
-    dst.copy_from_slice(data);
+impl ToBytes for AxiReadPayload {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.push(self.valid);
+        bytes.push(self.size);
+        bytes.push(self.region);
+        bytes.push(self.qos);
+        bytes.push(self.prot);
+        bytes.push(self.lock);
+        bytes.push(self.len);
+        bytes.push(self.cache);
+        bytes.push(self.burst);
+        bytes.push(self.user);
+        bytes.push(self.id);
+        bytes.extend(&self.addr.to_bytes());
+        bytes
+    }
 }
 
-unsafe fn fill_axi_read_payload(dst: *mut SvBitVecVal, dlen: u32, payload: &AxiReadPayload) {}
+unsafe fn write_to_pointer(dst: *mut u8, data: &[u8]) {
+    std::ptr::copy_nonoverlapping(data.as_ptr(), dst, data.len());
+}
 
-unsafe fn fill_axi_write_payload(dst: *mut SvBitVecVal, payload: &AxiWritePayload) {
-    let data = &payload.to_bytes();
-    info!("data length: {:?}", data.len());
-    write_to_pointer(dst as *mut u8, data);
+unsafe fn fill_axi_payload<T: ToBytes>(dst: *mut SvBitVecVal, payload: &T) {
+    let data = payload.to_bytes();
+    // info!("data length: {:?}", data.len());
+    write_to_pointer(dst as *mut u8, &data);
 }
 
 //----------------------
@@ -165,26 +198,16 @@ unsafe fn fill_axi_write_payload(dst: *mut SvBitVecVal, payload: &AxiWritePayloa
 
 /// evaluate at R fire.
 #[no_mangle]
-unsafe extern "C" fn axi_read_resp_axi4Probe(
-    rdata: c_longlong,
-    rid: c_uchar,
-    rlast: c_uchar,
-    rresp: c_uchar,
-    ruser: c_uchar,
+unsafe extern "C" fn axi_read_done_axi4Probe(
+    rdata: [u32; 100],
+    rid: u8,
+    rlast: u8,
+    rresp: u8,
+    ruser: u8,
 ) {
-    debug!(
-        "axi_read_resp_axi4Probe (rdata={rdata}, rid={rid}, rlast={rlast:#x}, \
-  rresp={rresp}, ruser={ruser})"
-    );
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
-    driver.axi_read_resp(
-        rdata as u32,
-        rid as u8,
-        rlast as u8,
-        rresp as u8,
-        ruser as u8,
-    );
+    driver.axi_read_done(rdata.to_vec(), rid, rlast, rresp, ruser);
 }
 
 /// evaluate at AW ready.
@@ -194,7 +217,7 @@ unsafe extern "C" fn axi_write_ready_axi4Probe(payload: *mut SvBitVecVal) {
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
     let response = driver.axi_write_ready();
-    fill_axi_write_payload(payload, &response);
+    fill_axi_payload(payload, &response);
 }
 
 /// evaluate at B fire.
@@ -213,7 +236,7 @@ unsafe extern "C" fn axi_read_ready_axi4Probe(payload: *mut SvBitVecVal) {
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
     let response = driver.axi_read_ready();
-    fill_axi_read_payload(payload, driver.dlen, &response);
+    fill_axi_payload(payload, &response);
 }
 
 #[no_mangle]

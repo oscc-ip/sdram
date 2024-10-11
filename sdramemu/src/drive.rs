@@ -2,6 +2,7 @@ use common::MEM_SIZE;
 use svdpi::{get_time, SvScope};
 use tracing::{error, info, trace};
 
+use crate::dpi::ToBytes;
 use crate::dpi::*;
 use crate::{OfflineArgs, AXI_SIZE};
 use std::collections::VecDeque;
@@ -189,9 +190,7 @@ pub(crate) struct Driver {
 
     axi_write_fifo: VecDeque<AxiWritePayload>,
 
-    axi_read_fifo: VecDeque<AxiReadPayload>,
-
-    axi_read_buffer: Vec<u8>,
+    axi_read_fifo: VecDeque<AxiWritePayload>,
 }
 
 #[cfg(feature = "trace")]
@@ -253,7 +252,6 @@ impl Driver {
             axi_read_fifo: VecDeque::new(),
             axi_write_done_fifo: VecDeque::new(),
             axi_write_fifo: VecDeque::new(),
-            axi_read_buffer: Vec::new(),
         };
 
         self_
@@ -288,33 +286,20 @@ impl Driver {
         WATCHDOG_CONTINUE
     }
 
-    pub(crate) fn axi_read_resp(&mut self, rdata: u32, rid: u8, rlast: u8, rresp: u8, ruser: u8) {
-        trace!(
-            "axi_read_resp (rdata={rdata}, rid={rid}, rlast={rlast:#x}, \
-    rresp={rresp}, ruser={ruser})"
-        );
-        self.axi_read_buffer.extend_from_slice(&rdata.to_le_bytes());
-        if rlast == 1 {
-            let payload = self.axi_read_fifo.pop_front().unwrap();
-            let compare = self.shadow_mem.read_mem_axi(payload);
-            assert_eq!(
-                compare, self.axi_read_buffer,
-                "compare failed: {:?} -> {:?}",
-                self.axi_read_buffer, compare
-            );
-            self.axi_read_buffer.clear();
-        }
-    }
-
     pub(crate) fn axi_write_done(&mut self, bid: u8, bresp: u8, buser: u8) {
-        trace!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
+        info!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
         let payload = self.axi_write_fifo.pop_front().unwrap();
+        assert_eq!(
+            payload.id, bid,
+            "ID is not equal: wid = {}, bid = {}",
+            payload.id, bid
+        );
         self.axi_write_done_fifo.push_back(payload);
     }
 
     pub(crate) fn axi_write_ready(&mut self) -> AxiWritePayload {
         trace!("axi_write_ready");
-        let mut payload = AxiWritePayload::random();
+        let payload = AxiWritePayload::random();
         self.axi_write_fifo.push_back(payload.clone());
         self.shadow_mem.write_mem_axi(payload.clone());
         payload
@@ -324,15 +309,48 @@ impl Driver {
         trace!("axi_read_ready");
         if self.axi_write_done_fifo.is_empty() {
             let mut payload = AxiReadPayload::random();
-            payload.valid = false;
+            payload.valid = 0;
             payload
         } else {
-            info!("reading back...");
-            let payload =
-                AxiReadPayload::from_write_payload(self.axi_write_done_fifo.pop_front().unwrap());
-            self.axi_read_fifo.push_back(payload.clone());
+            let write_payload = self.axi_write_done_fifo.pop_front().unwrap();
+            let payload = AxiReadPayload::from_write_payload(&write_payload);
+            self.axi_read_fifo.push_back(write_payload);
+            info!(
+                "reading(0x{:02x}) <- 0x{:08x}/{:#} with len = 0x{:02x}",
+                payload.id,
+                payload.addr,
+                match payload.burst {
+                    0 => "FIX",
+                    1 => "INCR",
+                    2 => "WARP",
+                    _ => "UNKNOWN",
+                },
+                payload.len,
+            );
             payload
         }
+    }
+
+    pub(crate) fn axi_read_done(
+        &mut self,
+        rdata: Vec<u32>,
+        rid: u8,
+        rlast: u8,
+        rresp: u8,
+        ruser: u8,
+    ) {
+        info!(
+            "axi_read_resp (rid={rid}, rlast={rlast:#x}, \
+    rresp={rresp}, ruser={ruser})"
+        );
+        let payload = self.axi_read_fifo.pop_front().unwrap();
+        let compare = payload.data.to_bytes();
+        let rdata_bytes = rdata.to_bytes();
+        assert_eq!(
+            rdata_bytes, compare,
+            "compare failed: {:?} -> {:?}",
+            rdata_bytes, compare
+        );
     }
 
     #[cfg(feature = "trace")]

@@ -72,7 +72,7 @@ class ReadAddressPayload(addrWidth: Int, idWidth: Int, userWidth: Int)
   val qos = UInt(8.W)
   val region = UInt(8.W)
   val size = UInt(8.W)
-  val valid = Bool()
+  val valid = UInt(8.W)
 }
 
 // consume transaction from DPI, drive RTL signal
@@ -216,7 +216,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
         )
       }
 
-      // AssertProperty(BoolSequence(awCount >= wCount))
+      AssertProperty(BoolSequence(awCount >= wCount))
     }
   }
 
@@ -240,11 +240,16 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val arRPtr =
         RegInit(0.U.asTypeOf(UInt(log2Ceil(parameter.outstanding).W)))
       val arCount = RegInit(0.U(32.W))
+      val doIssueARPayload = RegInit(false.B)
 
       // AR
-      channel.ARVALID := arFifo(arWPtr).payload.valid
-      when(channel.ARREADY) {
-        arFifo(arWPtr).payload := RawUnclockedNonVoidFunctionCall(
+      when(arFifo(arWPtr).payload.valid === 0.U && !io.reset.asBool) {
+        val payload_wire = WireInit(0.U.asTypeOf(new ReadAddressPayload(
+            parameter.axiParameter.addrWidth,
+            parameter.axiParameter.idWidth,
+            parameter.axiParameter.arUserWidth
+        )))
+        payload_wire := RawClockedNonVoidFunctionCall(
           s"axi_read_ready_${parameter.name}",
           new ReadAddressPayload(
             parameter.axiParameter.addrWidth,
@@ -252,18 +257,22 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
             parameter.axiParameter.arUserWidth
           )
         )(
-          when.cond && !io.gateRead
+          io.clock, when.cond && !io.gateRead
         )
-        when(arFifo(arWPtr).payload.valid) {
-          arFifo(arWPtr).payload.valid := false.B
+        when(doIssueARPayload && payload_wire.valid === 1.U) {
+          arFifo(arWPtr).payload := payload_wire
           arWPtr := arWPtr + 1.U
+        }.elsewhen(!doIssueARPayload) {
+          doIssueARPayload := true.B
         }
       }
       val arFire = channel.ARREADY && channel.ARVALID
       when(arFire) {
+        arFifo(arRPtr).payload.valid := false.B
         arRPtr := arRPtr + 1.U
         arCount := arCount + 1.U
       }
+      channel.ARVALID := arFifo(arRPtr).payload.valid
       channel.ARADDR := arFifo(arRPtr).payload.addr
       channel.ARBURST := arFifo(arRPtr).payload.burst
       channel.ARCACHE := arFifo(arRPtr).payload.cache
@@ -280,19 +289,27 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       channel.RREADY := true.B
       val rCount = RegInit(0.U(32.W))
       val rFire = channel.RREADY && channel.RVALID
+      val rdataFifo = RegInit(VecInit(Seq.fill(parameter.outstanding)(0.U(32.W))))
+      val wIndex = RegInit(0.U(32.W))
       when(rFire) {
-        rCount := rCount + 1.U
-        RawClockedVoidFunctionCall(
-          s"axi_read_resp_${parameter.name}"
-        )(
-          io.clock,
-          when.cond && !io.gateRead,
-          channel.RDATA,
-          channel.RID.asTypeOf(UInt(8.W)),
-          channel.RLAST.asTypeOf(UInt(8.W)),
-          channel.RRESP.asTypeOf(UInt(8.W)),
-          channel.RUSER.asTypeOf(UInt(8.W))
-        )
+        when(channel.RLAST) {
+          rCount := rCount + 1.U
+          wIndex := 0.U
+          RawClockedVoidFunctionCall(
+            s"axi_read_done_${parameter.name}"
+          )(
+            io.clock,
+            when.cond && !io.gateRead,
+            rdataFifo.asTypeOf(UInt((32 * parameter.outstanding).W)),
+            channel.RID.asTypeOf(UInt(8.W)),
+            channel.RLAST.asTypeOf(UInt(8.W)),
+            channel.RRESP.asTypeOf(UInt(8.W)),
+            channel.RUSER.asTypeOf(UInt(8.W))
+          )
+        }.otherwise {
+          rdataFifo(wIndex) := channel.RDATA
+          wIndex := wIndex + 1.U
+        }
       }
       AssertProperty(BoolSequence(arCount >= rCount))
     }

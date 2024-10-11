@@ -12,3 +12,4 @@ novas.conf
 novas.rc
 sdram-sim-result/
 verdiLog/
+*.rc
