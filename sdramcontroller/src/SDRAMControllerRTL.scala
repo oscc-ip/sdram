@@ -30,7 +30,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         FIXED -> addr,
         INCR -> (addr + 4.U),
         WARP -> {
-          val mask = Cat(axLen, "b11".U(2.W))
+          val mask = Cat(axLen, "b11".U(2.W)).pad(32)
           (addr & (~mask).asUInt) | ((addr + 4.U) & mask)
         }
       )
