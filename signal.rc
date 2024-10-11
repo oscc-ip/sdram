@@ -2,11 +2,11 @@ Magic 271485
 Revision Verdi_V-2023.12
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 25 1920 594 388 134
+viewPort 0 25 1920 609 388 134
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-11-09-15-03/trace.fsdb"
+openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-11-10-12-00/trace.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -18,16 +18,16 @@ signalSpacing 5
 windowTimeUnit 1ns
 
 ; waveform viewport range
-zoom 98457.826102 124470.140653 1n
-cursor 102350.000000
+zoom 110503.014304 111856.434298 1n
+cursor 111130.000000
 marker 0.000000
 
 ; user define markers
 ; userMarker time_pos marker_name color linestyle
 ; visible top row signal index
-top 0
+top 20
 ; marker line index
-markerPos 35
+markerPos 34
 
 ; event list
 ; addEvent event_name event_expression
@@ -48,7 +48,7 @@ curSTATUS ByChange
 
 
 addGroup "G1"
-activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-11-09-15-03/trace.fsdb"
+activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-11-10-12-00/trace.fsdb"
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 /SDRAMControllerTestBench/dut/clock
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -holdScope reset
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_state[79:0]
@@ -82,6 +82,8 @@ addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope req_axbur
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_axlen_q[7:0]
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_addr_q[31:0]
 addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_prio_q
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_hold_wr_q
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -holdScope req_hold_rd_q
 addSignal -h 15 -UNSIGNED -HEX -holdScope AXI_AWID[3:0]
 addSignal -h 15 -UNSIGNED -HEX -holdScope AXI_BID[3:0]
 addSignal -h 15 -holdScope AXI_AWVALID

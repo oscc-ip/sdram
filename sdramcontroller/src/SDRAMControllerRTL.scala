@@ -161,7 +161,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       req_hold_wr_q := true.B
     }
     .elsewhen(ram_accept) {
-      req_hold_wr_q := true.B
+      req_hold_wr_q := false.B
     }
 
     // ------------------------------------------------------------------------
