@@ -294,7 +294,7 @@ impl Driver {
         let payload = self.axi_write_fifo.pop_front().unwrap();
         assert_eq!(
             payload.id, bid,
-            "ID is not equal: wid = {}, bid = {}",
+            "ID is not equal: awid = {}, bid = {}",
             payload.id, bid
         );
         self.axi_write_done_fifo.push_back(payload);
