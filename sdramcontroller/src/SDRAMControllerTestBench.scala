@@ -53,8 +53,8 @@ class SDRAMControllerTestBench(val parameter: SDRAMControllerTestBenchParameter)
         name = "axi4Probe",
         axiParameter = dut.io.axi.parameter,
         outstanding = 4,
-        readPayloadSize = 1,
-        writePayloadSize = 100
+        readPayloadSize = 256,
+        writePayloadSize = 256
       )
     )
   ).tap(_.suggestName(s"axi4_channel_probe"))

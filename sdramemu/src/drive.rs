@@ -98,7 +98,10 @@ impl ShadowMem {
                 * (bytes_number * transfer_count as u32);
             upper_boundary = lower_boundary + bytes_number * transfer_count as u32;
             assert!(
-                payload.len == 2 || payload.len == 4 || payload.len == 8 || payload.len == 16,
+                transfer_count == 2
+                    || transfer_count == 4
+                    || transfer_count == 8
+                    || transfer_count == 16,
                 "unsupported burst len: {}",
                 payload.len
             );

@@ -60,20 +60,21 @@ impl AxiWritePayload {
     pub(crate) fn random() -> Self {
         let mut rng = rand::thread_rng();
         let burst_type = rng.gen_range(0..=2);
-        let burst_length = if burst_type == 2 {
-            1 << rng.gen_range(1..=4)
-        } else {
-            rng.gen_range(0..=15)
+        let burst_length = match burst_type {
+            0 => rng.gen_range(0..=15),
+            1 => rng.gen_range(0..=u8::MAX),
+            2 => 1 << rng.gen_range(1..=4),
+            _ => 0,
         };
         let burst_size: u8 = rng.gen_range(0..=7 - AXI_SIZE.leading_zeros()) as u8;
         let bytes_number = 1 << burst_size;
         let payload = AxiWritePayload {
             id: *AWID.lock().unwrap(),
-            len: burst_length,
+            len: burst_length - 1,
             addr: rng.gen_range(0xfc000000..=u32::MAX as u32) / bytes_number * bytes_number,
-            data: (0..100).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
-            strb: (0..100).map(|_| (1 << (burst_size + 1)) - 1).collect(),
-            wUser: (0..100).map(|_| rng.gen_range(0..=u8::MAX)).collect(),
+            data: (0..256).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
+            strb: (0..256).map(|_| (1 << (burst_size + 1)) - 1).collect(),
+            wUser: (0..256).map(|_| rng.gen_range(0..=u8::MAX)).collect(),
             awUser: rng.gen_range(0..=u8::MAX),
             dataValid: 1,
             burst: burst_type,
@@ -199,7 +200,7 @@ unsafe fn fill_axi_payload<T: ToBytes>(dst: *mut SvBitVecVal, payload: &T) {
 /// evaluate at R fire.
 #[no_mangle]
 unsafe extern "C" fn axi_read_done_axi4Probe(
-    rdata: [u32; 100],
+    rdata: [u32; 256],
     rid: u8,
     rlast: u8,
     rresp: u8,

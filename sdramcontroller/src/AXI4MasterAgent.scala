@@ -289,7 +289,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       channel.RREADY := true.B
       val rCount = RegInit(0.U(32.W))
       val rFire = channel.RREADY && channel.RVALID
-      val rdataFifo = RegInit(VecInit(Seq.fill(parameter.outstanding)(0.U(32.W))))
+      val rdataFifo = RegInit(VecInit(Seq.fill(parameter.readPayloadSize)(0.U(32.W))))
       val wIndex = RegInit(0.U(32.W))
       when(rFire) {
         when(channel.RLAST) {
