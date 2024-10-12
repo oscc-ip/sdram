@@ -26,7 +26,7 @@
         legacyPackages = pkgs;
         devShells.default = pkgs.mkShell ({
           inputsFrom = [ pkgs.sdram.sdram-compiled pkgs.sdram.tb-dpi-lib ];
-          nativeBuildInputs = [ pkgs.cargo pkgs.rustfmt pkgs.rust-analyzer ];
+          nativeBuildInputs = [ pkgs.cargo pkgs.rustfmt pkgs.rust-analyzer pkgs.clippy pkgs.nixfmt-rfc-style pkgs.nixpkgs-fmt ];
           RUST_SRC_PATH =
             "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         } // pkgs.sdram.tb-dpi-lib.env);
