@@ -201,6 +201,7 @@ unsafe fn fill_axi_payload<T: ToBytes>(dst: *mut SvBitVecVal, payload: &T) {
 #[no_mangle]
 unsafe extern "C" fn axi_read_done_axi4Probe(
     rdata: [u32; 256],
+    len: u8,
     rid: u8,
     rlast: u8,
     rresp: u8,
@@ -208,7 +209,7 @@ unsafe extern "C" fn axi_read_done_axi4Probe(
 ) {
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
-    driver.axi_read_done(rdata.to_vec(), rid, rlast, rresp, ruser);
+    driver.axi_read_done(rdata.to_vec(), len, rid, rlast, rresp, ruser);
 }
 
 /// evaluate at AW ready.
