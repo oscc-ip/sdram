@@ -300,11 +300,14 @@ impl Driver {
     pub(crate) fn axi_write_done(&mut self, bid: u8, bresp: u8, buser: u8) {
         info!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
         let payload = self.axi_write_fifo.pop_front().unwrap();
-        // driver_assert_eq!(
-        //     payload.id, bid,
-        //     "ID is not equal: awid = {}, bid = {}",
-        //     payload.id, bid
-        // );
+        driver_assert_eq!(
+            self,
+            payload.id,
+            bid,
+            "ID is not equal: awid = {}, bid = {}",
+            payload.id,
+            bid
+        );
         self.axi_write_done_fifo.push_back(payload);
     }
 
@@ -381,7 +384,7 @@ impl Driver {
             self,
             rdata_bytes,
             compare,
-            "compare failed: current: {:x?} -> correct: {:x?}",
+            "compare failed:\n\tcurrent: {}\n\tcorrect: {}",
             hex::encode(&rdata_bytes),
             hex::encode(&compare)
         );

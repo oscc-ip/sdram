@@ -1,5 +1,4 @@
 use common::{plusarg::PlusArgMatcher, CommonArgs};
-use tracing::error;
 pub mod dpi;
 pub mod drive;
 
@@ -30,18 +29,18 @@ impl OfflineArgs {
 #[macro_export]
 macro_rules! driver_assert_eq {
     ($self:expr, $left:expr, $right:expr $(,)?) => {{
-        $self.dump_manual_finish = true;
         if $left != $right {
+            $self.dump_manual_finish = true;
             error!(
                 "assertion failed: `(left == right)`\n  left: `{:?}`\n right: `{:?}`",
                 $left, $right
             );
         }
     }};
-    ($self:expr, $left:expr, $right:expr, $msg:expr $(, $arg:expr)*) => {{
-        $self.dump_manual_finish = true;
+    ($self:expr, $left:expr, $right:expr, $($arg:tt)+) => {{
         if $left != $right {
-            error!($msg $(, $arg)*);
+            $self.dump_manual_finish = true;
+            error!($($arg)+);
         }
     }};
 }
