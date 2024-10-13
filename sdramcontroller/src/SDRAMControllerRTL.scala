@@ -848,7 +848,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     }
 
     /** Record target state */
-    target_state_q := target_state_r
+    // target_state_q := target_state_r
+    target_state_q := target_state_r_w
 
     /** Record delayed state */
     when (state_q =/= STATE_DELAY && delay_w =/= 0.U(DELAY_W.W)) {
