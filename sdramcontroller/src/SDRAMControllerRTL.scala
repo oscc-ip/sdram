@@ -587,6 +587,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * next state is REFRESH, otherwise is ACTIVATE.
       */
     val target_state_r = RegInit(STATE_IDLE)
+    /** Target State (Next) wire */
+    val target_state_r_w = WireInit(STATE_IDLE)
     /** Target State (Current) */
     val target_state_q = RegInit(STATE_IDLE)
     /** Deleay State (Used for all delay operations) */
@@ -610,6 +612,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(next_state_r)
     dontTouch(next_state_r_w)
     dontTouch(target_state_r)
+    dontTouch(target_state_r_w)
     dontTouch(target_state_q)
     dontTouch(delay_state_q)
 
@@ -674,7 +677,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
      */
 
     next_state_r_w := state_q
-    target_state_r := target_state_q
+    target_state_r_w := target_state_q
 
     switch(state_q) {
       /** Next State is IDLE, when the number of refresh is reached. */
@@ -696,7 +699,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           .otherwise {
             next_state_r_w := STATE_REFRESH
           }
-          target_state_r := STATE_REFRESH
+          target_state_r_w := STATE_REFRESH
         }
         .elsewhen(ram_req_w) {
           /** Open row and active row hit at the same time */
@@ -714,18 +717,18 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           .elsewhen(row_open_q(addr_bank_w)) {
             next_state_r_w := STATE_PRECHARGE
             when(!ram_rd_w) {
-              target_state_r := STATE_WRITE0
+              target_state_r_w := STATE_WRITE0
             }.otherwise {
-              target_state_r := STATE_READ
+              target_state_r_w := STATE_READ
             }
           }
           /** No open row, open row */
           .otherwise {
             next_state_r_w := STATE_ACTIVATE
             when(!ram_rd_w) {
-              target_state_r := STATE_WRITE0
+              target_state_r_w := STATE_WRITE0
             }.otherwise {
-              target_state_r := STATE_READ
+              target_state_r_w := STATE_READ
             }
           }
         }
@@ -735,7 +738,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         * corresponding READ or WRITE state.
         */
       is(STATE_ACTIVATE) {
-        next_state_r_w := target_state_r
+        next_state_r_w := target_state_r_w
       }
       /** Next State is READ_WAIT */
       is(STATE_READ) {
@@ -779,7 +782,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         * let next state is REFRESH, otherwise is ACTIVATE.
         */
       is(STATE_PRECHARGE) {
-        when(target_state_r === STATE_REFRESH) {
+        when(target_state_r_w === STATE_REFRESH) {
           next_state_r_w := STATE_REFRESH
         }.otherwise {
           next_state_r_w := STATE_ACTIVATE
@@ -794,6 +797,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       }
     }
     next_state_r := next_state_r_w
+    target_state_r := target_state_r_w
 
     // ------------------------------------------------------------------------
     // SDRAM Delay Operation
@@ -847,8 +851,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     target_state_q := target_state_r
 
     /** Record delayed state */
-    when (state_q === STATE_DELAY && delay_r =/= 0.U(DELAY_W.W)) {
-      delay_state_q := next_state_r
+    when (state_q =/= STATE_DELAY && delay_w =/= 0.U(DELAY_W.W)) {
+      delay_state_q := next_state_r_w
     }
 
     /** Update actual state */
