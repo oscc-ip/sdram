@@ -301,7 +301,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
             io.clock,
             when.cond && !io.gateRead,
             rdataFifo.asTypeOf(UInt((32 * parameter.readPayloadSize).W)),
-            wIndex.asTypeOf(UInt(8.W)),
+            (wIndex + 1.U).asTypeOf(UInt(8.W)),
             channel.RID.asTypeOf(UInt(8.W)),
             channel.RLAST.asTypeOf(UInt(8.W)),
             channel.RRESP.asTypeOf(UInt(8.W)),

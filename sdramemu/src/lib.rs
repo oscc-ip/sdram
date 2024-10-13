@@ -1,5 +1,5 @@
-use common::{plusarg::PlusArgMatcher,  CommonArgs};
-
+use common::{plusarg::PlusArgMatcher, CommonArgs};
+use tracing::error;
 pub mod dpi;
 pub mod drive;
 
@@ -25,4 +25,23 @@ impl OfflineArgs {
             wave_path: matcher.match_("wave-path").into(),
         }
     }
+}
+
+#[macro_export]
+macro_rules! driver_assert_eq {
+    ($self:expr, $left:expr, $right:expr $(,)?) => {{
+        $self.dump_manual_finish = true;
+        if $left != $right {
+            error!(
+                "assertion failed: `(left == right)`\n  left: `{:?}`\n right: `{:?}`",
+                $left, $right
+            );
+        }
+    }};
+    ($self:expr, $left:expr, $right:expr, $msg:expr $(, $arg:expr)*) => {{
+        $self.dump_manual_finish = true;
+        if $left != $right {
+            error!($msg $(, $arg)*);
+        }
+    }};
 }

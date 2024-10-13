@@ -4,6 +4,7 @@ use tracing::{error, info, trace};
 
 use crate::dpi::ToBytes;
 use crate::dpi::*;
+use crate::driver_assert_eq;
 use crate::{OfflineArgs, AXI_SIZE};
 use std::collections::VecDeque;
 
@@ -120,16 +121,14 @@ impl ShadowMem {
 
             assert_eq!(
                 payload.strb[item_idx].count_ones(),
-                payload.size as u32 + 1,
+                1 << payload.size >> 3,
                 "the number of will write bytes is not equal"
             );
 
-            let mut write_count = 0;
-
             info!(
-                "writing(0x{:02x}) 0x{:08x} -> 0x{:08x}/{:#} with strb:0b{:08b}",
+                "writing({:#02x}) {:#08x} -> {:#08x}/{:#} with strb:{:#08b}",
                 payload.id,
-                payload.data[item_idx as usize],
+                payload.data[item_idx],
                 current_addr,
                 match payload.burst {
                     0 => "FIX",
@@ -140,13 +139,12 @@ impl ShadowMem {
                 payload.strb[item_idx]
             );
 
-            for byte_idx in 0..AXI_SIZE / 8 {
-                // let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
-                // if byte_mask {
-                self.mem[(current_addr + write_count - 0xfc000000) as usize] =
-                    (payload.data[item_idx as usize] >> (byte_idx * 8) & 0xff) as u8;
-                write_count += 1;
-                // }
+            for (write_count, byte_idx) in (0..AXI_SIZE / 8).enumerate() {
+                let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
+                if byte_mask {
+                    self.mem[(current_addr + write_count as u32 - 0xfc000000) as usize] =
+                        (payload.data[item_idx] >> (byte_idx * 8) & 0xff) as u8;
+                }
             }
 
             current_addr = match payload.burst {
@@ -180,9 +178,7 @@ pub(crate) struct Driver {
     dump_end: u64,
     #[cfg(feature = "trace")]
     dump_started: bool,
-
-    pub(crate) dlen: u32,
-
+    dump_manual_finish: bool,
     timeout: u64,
 
     clock_flip_time: u64,
@@ -209,7 +205,7 @@ fn parse_range(input: &str) -> (u64, u64) {
         return (0, 0);
     }
 
-    const INVALID_NUMBER: &'static str = "invalid number";
+    const INVALID_NUMBER: &str = "invalid number";
 
     if parts.len() == 1 {
         return (parts[0].parse().expect(INVALID_NUMBER), 0);
@@ -237,7 +233,7 @@ impl Driver {
         #[cfg(feature = "trace")]
         let (dump_start, dump_end) = parse_range(&args.dump_range);
 
-        let self_ = Self {
+        Self {
             scope,
 
             #[cfg(feature = "trace")]
@@ -248,16 +244,16 @@ impl Driver {
             dump_end,
             #[cfg(feature = "trace")]
             dump_started: false,
-            dlen: args.common_args.dlen,
-            timeout: env!("TIMEOUT").parse().unwrap(),
+            dump_manual_finish: false,
+            timeout: std::env::var("TIMEOUT")
+                .map(|s| s.parse::<u64>().unwrap_or(u64::MAX))
+                .unwrap_or(u64::MAX),
             clock_flip_time: env!("CLOCK_FLIP_TIME").parse().unwrap(),
             shadow_mem: ShadowMem::new(),
             axi_read_fifo: VecDeque::new(),
             axi_write_done_fifo: VecDeque::new(),
             axi_write_fifo: VecDeque::new(),
-        };
-
-        self_
+        }
     }
 
     pub(crate) fn init(&mut self) {
@@ -274,10 +270,16 @@ impl Driver {
         const WATCHDOG_FINISH: u8 = 2;
 
         let tick = self.get_tick();
+
+        if self.dump_manual_finish {
+            info!("[{tick}] manual finish, exiting");
+            return WATCHDOG_FINISH;
+        }
+
         #[cfg(feature = "trace")]
         if self.dump_end != 0 && tick > self.dump_end {
             info!("[{tick}] run to dump end, exiting");
-            return WATCHDOG_FINISH;
+            return WATCHDOG_TIMEOUT;
         }
 
         #[cfg(feature = "trace")]
@@ -285,6 +287,12 @@ impl Driver {
             self.start_dump_wave();
             self.dump_started = true;
         }
+
+        if tick >= self.timeout {
+            info!("[{tick}] timeout triggered, exiting");
+            return WATCHDOG_TIMEOUT;
+        }
+
         trace!("[{tick}] watchdog continue");
         WATCHDOG_CONTINUE
     }
@@ -292,7 +300,7 @@ impl Driver {
     pub(crate) fn axi_write_done(&mut self, bid: u8, bresp: u8, buser: u8) {
         info!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
         let payload = self.axi_write_fifo.pop_front().unwrap();
-        // assert_eq!(
+        // driver_assert_eq!(
         //     payload.id, bid,
         //     "ID is not equal: awid = {}, bid = {}",
         //     payload.id, bid
@@ -319,7 +327,7 @@ impl Driver {
             let payload = AxiReadPayload::from_write_payload(&write_payload);
             self.axi_read_fifo.push_back(write_payload);
             info!(
-                "reading(0x{:02x}) <- 0x{:08x}/{:#} with len = 0x{:02x}",
+                "reading({:#02x}) <- {:#08x}/{:#} with len = {:#02x}",
                 payload.id,
                 payload.addr,
                 match payload.burst {
@@ -344,30 +352,39 @@ impl Driver {
         ruser: u8,
     ) {
         info!(
-            "axi_read_resp (rid={rid}, rlast={rlast:#x}, \
-    rresp={rresp}, ruser={ruser})"
+            "axi_read_done (rid={rid:#02x}, rlast={rlast:#x}, \
+    rresp={rresp:#08x}, ruser={ruser:#08x})"
         );
         let payload = self.axi_read_fifo.pop_front().unwrap();
-        let compare = payload.data.to_bytes();
-        // assert_eq!(
-        //     len,
-        //     payload.len + 1,
-        //     "len is not equal, current: {}, correct: {}",
-        //     len,
-        //     payload.len + 1
-        // );
-        // let rdata_bytes = rdata.to_bytes();
-        // assert_eq!(
-        //     rdata_bytes, compare,
-        //     "compare failed: {:?} -> {:?}",
-        //     rdata_bytes, compare
-        // );
-        // if rdata_bytes != compare {
-        //     error!("compare failed: {:?} -> {:?}", rdata_bytes, compare);
-        // }
-        for (index, data) in rdata.iter().enumerate() {
-            info!("reading {:02}/{:02} -> {:08x}", index, len, data);
-        }
+        driver_assert_eq!(self, rlast, 1, "rlast is not assert");
+        driver_assert_eq!(
+            self,
+            rid,
+            payload.id,
+            "id is not equal, current: {}, correct: {}",
+            rid,
+            payload.id
+        );
+        driver_assert_eq!(
+            self,
+            len,
+            payload.len + 1,
+            "len is not equal, current: {}, correct: {}",
+            len,
+            payload.len + 1
+        );
+        let compare = payload.data[..(payload.len + 1) as usize]
+            .to_vec()
+            .to_bytes();
+        let rdata_bytes = rdata[..len as usize].to_vec().to_bytes();
+        driver_assert_eq!(
+            self,
+            rdata_bytes,
+            compare,
+            "compare failed: current: {:x?} -> correct: {:x?}",
+            hex::encode(&rdata_bytes),
+            hex::encode(&compare)
+        );
     }
 
     #[cfg(feature = "trace")]
