@@ -2,11 +2,11 @@ Magic 271485
 Revision Verdi_V-2023.12
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 25 1920 730 388 134
+viewPort 0 25 1920 603 388 134
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-13-07-00-13/trace.fsdb"
+openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-13-09-23-20/trace.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -18,16 +18,16 @@ signalSpacing 5
 windowTimeUnit 1ns
 
 ; waveform viewport range
-zoom 109839.022739 110406.649731 1n
-cursor 109950.000000
+zoom 102090.651716 102773.053530 1n
+cursor 102330.000000
 marker 0.000000
 
 ; user define markers
 ; userMarker time_pos marker_name color linestyle
 ; visible top row signal index
-top 2
+top 49
 ; marker line index
-markerPos 9
+markerPos 59
 
 ; event list
 ; addEvent event_name event_expression
@@ -48,7 +48,7 @@ curSTATUS ByChange
 
 
 addGroup "G1"
-activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-13-07-00-13/trace.fsdb"
+activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-13-09-23-20/trace.fsdb"
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 /SDRAMControllerTestBench/dut/clock
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -holdScope reset
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_state[79:0]
@@ -107,7 +107,7 @@ addSignal -h 15 -holdScope write_active_w
 addSignal -h 15 -holdScope read_active_w
 addSignal -h 15 -holdScope write_prio_w
 addSignal -h 15 -holdScope read_prio_w
-addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope req_in_r[5:0]
+addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope req_in_w[5:0]
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope req_push_w
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope req_fifo_accept_w
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_accept_w

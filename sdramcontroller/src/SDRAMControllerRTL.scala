@@ -173,7 +173,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
       * Req[4]: AXI4 Address or Request Length Status, 0 = Length > 1, 1 =
       * Length equal 0 Req[3 : 0]: AXI4 Address ID
       */
-    val req_in_r = RegInit(0.U(6.W))
+    val req_in_w = WireInit(0.U(6.W))
     /** AXI4 request output valid enable */
     val req_out_valid_w = WireInit(false.B)
     /** AXI4 request out control */
@@ -190,7 +190,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val ram_accept_w = WireInit(false.B)
 
     dontTouch(req_push_w)
-    dontTouch(req_in_r)
+    dontTouch(req_in_w)
     dontTouch(req_out_valid_w)
     dontTouch(req_out_w)
     dontTouch(resp_accept_w)
@@ -200,18 +200,18 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(ram_accept_w)
 
     when(axi.ar.valid && axi.ar.ready) {
-      req_in_r := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
+      req_in_w := Cat(1.U(1.W), axi.ar.bits.len === 0.U, axi.ar.bits.id)
     }
     .elsewhen(axi.aw.valid && axi.aw.ready) {
-      req_in_r := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
+      req_in_w := Cat(0.U(1.W), axi.aw.bits.len === 0.U, axi.aw.bits.id)
     }
     .otherwise {
-      req_in_r := Cat(ram_rd, req_len_q === 0.U, req_id_q)
+      req_in_w := Cat(ram_rd, req_len_q === 0.U, req_id_q)
     }
 
     val u_requests: Instance[DW_fifo_s1_sf] = Instantiate(new DW_fifo_s1_sf(
       org.chipsalliance.dwbb.interface.DW_fifo_s1_sf.Parameter(
-        width = req_in_r.getWidth,
+        width = req_in_w.getWidth,
         depth = 4,
         aeLevel = 1,
         afLevel = 1,
@@ -222,7 +222,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_requests.io.clk := clock
     u_requests.io.rst_n := !reset
 
-    u_requests.io.data_in := req_in_r
+    u_requests.io.data_in := req_in_w
     u_requests.io.push_req_n := !req_push_w
     req_fifo_accept_w := !u_requests.io.full
 
