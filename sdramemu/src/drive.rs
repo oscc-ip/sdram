@@ -371,13 +371,13 @@ impl Driver {
         &mut self,
         rdata: Vec<u32>,
         len: u8,
+        lastData: u32,
         rid: u8,
-        rlast: u8,
         rresp: u8,
         ruser: u8,
     ) {
         info!(
-            "axi_read_done (rid={rid:#02x}, rlast={rlast:#x}, \
+            "axi_read_done (rid={rid:#02x}, \
     rresp={rresp:#08x}, ruser={ruser:#08x})"
         );
         *self
@@ -385,7 +385,6 @@ impl Driver {
             .entry("axi_read_done".to_string())
             .or_insert(0) += 1;
         let payload = self.axi_read_fifo.pop_front().unwrap();
-        driver_assert_eq!(self, rlast, 1, "rlast is not assert");
         driver_assert_eq!(
             self,
             rid,
@@ -404,8 +403,12 @@ impl Driver {
         );
         let compare = payload.data[..(payload.len + 1) as usize]
             .to_vec()
-            .to_bytes();
-        let rdata_bytes = rdata[..len as usize].to_vec().to_bytes();
+            .to_bytes_be();
+        let rdata_bytes = {
+            let mut vec = rdata[..(len - 1) as usize].to_vec();
+            vec.push(lastData);
+            vec.to_bytes_be()
+        };
         driver_assert_eq!(
             self,
             rdata_bytes,

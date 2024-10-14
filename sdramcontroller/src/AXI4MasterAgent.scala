@@ -292,6 +292,7 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
       val rdataFifo = RegInit(VecInit(Seq.fill(parameter.readPayloadSize)(0.U(32.W))))
       val wIndex = RegInit(0.U(8.W))
       when(rFire) {
+        rdataFifo(wIndex) := channel.RDATA;
         when(channel.RLAST) {
           rCount := rCount + 1.U
           wIndex := 0.U
@@ -302,13 +303,12 @@ class AXI4MasterAgent(parameter: AXI4MasterAgentParameter)
             when.cond && !io.gateRead,
             rdataFifo.asTypeOf(UInt((32 * parameter.readPayloadSize).W)),
             (wIndex + 1.U).asTypeOf(UInt(8.W)),
+            channel.RDATA.asTypeOf(UInt(32.W)),
             channel.RID.asTypeOf(UInt(8.W)),
-            channel.RLAST.asTypeOf(UInt(8.W)),
             channel.RRESP.asTypeOf(UInt(8.W)),
             channel.RUSER.asTypeOf(UInt(8.W))
           )
         }.otherwise {
-          rdataFifo(wIndex) := channel.RDATA
           wIndex := wIndex + 1.U
         }
       }

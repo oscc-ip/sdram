@@ -30,15 +30,31 @@ pub trait ToBytes {
     fn to_bytes(&self) -> Vec<u8>;
 }
 
+pub trait ToBytesBe {
+    fn to_bytes_be(&self) -> Vec<u8>;
+}
+
 impl ToBytes for u32 {
     fn to_bytes(&self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }
 }
 
+impl ToBytesBe for u32 {
+    fn to_bytes_be(&self) -> Vec<u8> {
+        self.to_be_bytes().to_vec()
+    }
+}
+
 impl ToBytes for Vec<u32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.iter().flat_map(|&value| value.to_bytes()).collect()
+    }
+}
+
+impl ToBytesBe for Vec<u32> {
+    fn to_bytes_be(&self) -> Vec<u8> {
+        self.iter().flat_map(|&value| value.to_bytes_be()).collect()
     }
 }
 
@@ -240,15 +256,15 @@ unsafe fn fill_axi_payload<T: ToBytes>(dst: *mut SvBitVecVal, payload: &T) {
 unsafe extern "C" fn axi_read_done_axi4Probe(
     rdata: *const u32,
     len: u8,
+    lastData: u32,
     rid: u8,
-    rlast: u8,
     rresp: u8,
     ruser: u8,
 ) {
     let rdata_slice = std::slice::from_raw_parts(rdata, 256);
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
-    driver.axi_read_done(rdata_slice.to_vec(), len, rid, rlast, rresp, ruser);
+    driver.axi_read_done(rdata_slice.to_vec(), len, lastData, rid, rresp, ruser);
 }
 
 /// evaluate at AW ready.
