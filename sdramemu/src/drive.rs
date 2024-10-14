@@ -6,7 +6,10 @@ use crate::dpi::ToBytes;
 use crate::dpi::*;
 use crate::driver_assert_eq;
 use crate::{OfflineArgs, AXI_SIZE};
+use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::hash::Hash;
+use std::string;
 
 struct ShadowMem {
     mem: Vec<u8>,
@@ -188,6 +191,8 @@ pub(crate) struct Driver {
     axi_write_done_fifo: VecDeque<AxiWritePayload>,
     axi_write_fifo: VecDeque<AxiWritePayload>,
     axi_read_fifo: VecDeque<AxiWritePayload>,
+
+    statistic: HashMap<String, u64>,
 }
 
 #[cfg(feature = "trace")]
@@ -250,6 +255,12 @@ impl Driver {
             axi_read_fifo: VecDeque::new(),
             axi_write_done_fifo: VecDeque::new(),
             axi_write_fifo: VecDeque::new(),
+            statistic: HashMap::from([
+                ("axi_write".to_string(), 0),
+                ("axi_write_done".to_string(), 0),
+                ("axi_read".to_string(), 0),
+                ("axi_read_done".to_string(), 0),
+            ]),
         }
     }
 
@@ -268,15 +279,17 @@ impl Driver {
 
         let tick = self.get_tick();
 
+        let mut ret = WATCHDOG_CONTINUE;
+
         if self.dump_manual_finish {
             info!("[{tick}] manual finish, exiting");
-            return WATCHDOG_FINISH;
+            ret = WATCHDOG_FINISH;
         }
 
         #[cfg(feature = "trace")]
         if self.dump_end != 0 && tick > self.dump_end {
             info!("[{tick}] run to dump end, exiting");
-            return WATCHDOG_TIMEOUT;
+            ret = WATCHDOG_TIMEOUT;
         }
 
         #[cfg(feature = "trace")]
@@ -287,15 +300,25 @@ impl Driver {
 
         if tick >= self.timeout {
             info!("[{tick}] timeout triggered, exiting");
-            return WATCHDOG_TIMEOUT;
+            ret = WATCHDOG_TIMEOUT;
         }
 
         trace!("[{tick}] watchdog continue");
-        WATCHDOG_CONTINUE
+
+        if ret != WATCHDOG_CONTINUE {
+            info!("statistic:\naxi_write: \n\tdone: {}\n\ttotal: {}\naxi_read:\n\tdone: {}\n\ttotal: {}\n",
+        self.statistic["axi_write_done"], self.statistic["axi_write"], self.statistic["axi_read_done"], self.statistic["axi_read"])
+        }
+
+        ret
     }
 
     pub(crate) fn axi_write_done(&mut self, bid: u8, bresp: u8, buser: u8) {
         info!("axi_write_done (bid={bid}, bresp={bresp}, buser={buser})");
+        *self
+            .statistic
+            .entry("axi_write_done".to_string())
+            .or_insert(0) += 1;
         let payload = self.axi_write_fifo.pop_front().unwrap();
         driver_assert_eq!(
             self,
@@ -310,6 +333,7 @@ impl Driver {
 
     pub(crate) fn axi_write_ready(&mut self) -> AxiWritePayload {
         trace!("axi_write_ready");
+        *self.statistic.entry("axi_write".to_string()).or_insert(0) += 1;
         let payload = AxiWritePayload::random();
         self.axi_write_fifo.push_back(payload.clone());
         self.shadow_mem.write_mem_axi(payload.clone());
@@ -323,6 +347,7 @@ impl Driver {
             payload.valid = 0;
             payload
         } else {
+            *self.statistic.entry("axi_read".to_string()).or_insert(0) += 1;
             let write_payload = self.axi_write_done_fifo.pop_front().unwrap();
             let payload = AxiReadPayload::from_write_payload(&write_payload);
             self.axi_read_fifo.push_back(write_payload);
@@ -355,6 +380,10 @@ impl Driver {
             "axi_read_done (rid={rid:#02x}, rlast={rlast:#x}, \
     rresp={rresp:#08x}, ruser={ruser:#08x})"
         );
+        *self
+            .statistic
+            .entry("axi_read_done".to_string())
+            .or_insert(0) += 1;
         let payload = self.axi_read_fifo.pop_front().unwrap();
         driver_assert_eq!(self, rlast, 1, "rlast is not assert");
         driver_assert_eq!(
