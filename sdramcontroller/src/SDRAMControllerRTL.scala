@@ -40,6 +40,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
   // SDRAM Main
   // ==========================================================================
   withClockAndReset(clock, reset) {
+    val SDRAM_READ_LATENCY = 2
+
     // ========================================================================
     // AXI4 Request and Response
     // ========================================================================
@@ -178,6 +180,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val req_out_valid_w = WireInit(false.B)
     /** AXI4 request out control */
     val req_out_w = WireInit(0.U(6.W))
+    val req_out_r = RegInit(0.U(SDRAM_READ_LATENCY.W))
     /** AXI4 response accept enable */
     val resp_accept_w = WireInit(false.B)
     /** AXI4 request FIFO accept enable */
@@ -193,6 +196,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(req_in_w)
     dontTouch(req_out_valid_w)
     dontTouch(req_out_w)
+    dontTouch(req_out_r)
     dontTouch(resp_accept_w)
     dontTouch(req_fifo_accept_w)
     dontTouch(ram_read_data_w)
@@ -233,14 +237,18 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     dontTouch(u_requests.io)
 
+    req_out_r := Cat(req_out_r(SDRAM_READ_LATENCY - 2, 0), req_out_w(4))
+
     val resp_is_write_w = Mux(req_out_valid_w, ~req_out_w(5), false.B)
     val resp_is_read_w = Mux(req_out_valid_w, req_out_w(5), false.B)
     val resp_is_last_w = req_out_w(4)
+    val resp_is_last_w_rd = req_out_r(SDRAM_READ_LATENCY - 1)
     val resp_id_w = req_out_w(3, 0)
 
     dontTouch(resp_is_write_w)
     dontTouch(resp_is_read_w)
     dontTouch(resp_is_last_w)
+    dontTouch(resp_is_last_w_rd)
     dontTouch(resp_id_w)
 
     // ------------------------------------------------------------------------
@@ -340,7 +348,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     axi.r.valid := resp_valid_w && resp_is_read_w
     axi.r.bits.resp := 0.U(2.W)
     axi.r.bits.id := resp_id_w
-    axi.r.bits.last := resp_is_last_w
+    axi.r.bits.last := resp_is_last_w_rd
     axi.r.bits.user := 0.U
 
     dontTouch(axi.r.valid)
@@ -365,7 +373,6 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val SDRAM_MHZ = 50
     val SDRAM_ADDR_W = 24
     val SDRAM_COL_W = 9
-    val SDRAM_READ_LATENCY = 2
 
     /** SDRAM Internal Parameters */
     /** SDRAM Data Width */
