@@ -6,10 +6,14 @@ use crate::{OfflineArgs, AXI_SIZE};
 use common::plusarg::PlusArgMatcher;
 use common::MEM_SIZE;
 use core::mem;
-use rand::prelude::{SliceRandom, ThreadRng};
-use rand::Rng;
+use once_cell::sync::Lazy;
+use rand::prelude::SliceRandom;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use std::cell::LazyCell;
 use std::ffi::*;
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 use svdpi::SvScope;
 use tracing::{debug, error, info, trace};
 
@@ -57,8 +61,18 @@ pub(crate) struct AxiWritePayload {
     pub(crate) size: u8,
 }
 
+static RNG: Lazy<StdRng> = Lazy::new(|| {
+    let start = SystemTime::now();
+    let since_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Clock may have gone backwards");
+    let seed = since_epoch.as_secs();
+    info!("Using seed: {:#x}", seed);
+    StdRng::seed_from_u64(seed)
+});
+
 impl AxiWritePayload {
-    fn generate_random_strb(size: u8, width: u8, rng: &mut ThreadRng) -> u8 {
+    fn generate_random_strb(size: u8, width: u8, rng: &mut StdRng) -> u8 {
         let ones_count = 1 << size >> 3;
         let zeros_count = width - ones_count;
 
@@ -74,7 +88,8 @@ impl AxiWritePayload {
         result
     }
     pub(crate) fn random() -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = RNG.clone();
+
         let burst_type = rng.gen_range(0..=2);
         let burst_length = match burst_type {
             0 => rng.gen_range(0..=15),
@@ -87,7 +102,7 @@ impl AxiWritePayload {
         // let burst_size = rng.gen_range(0..=7 - AXI_SIZE.leading_zeros()) as u8;
         let bytes_number = 8 << burst_size;
         let payload = AxiWritePayload {
-            id: *AWID.lock().unwrap(),
+            id: *AWID.lock().unwrap() & 0xF,
             len: burst_length - 1,
             addr: rng.gen_range(0xfc000000..=u32::MAX) / bytes_number * bytes_number,
             data: (0..256).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
@@ -105,12 +120,7 @@ impl AxiWritePayload {
             region: 0xbb,
             size: burst_size,
         };
-        if *AWID.lock().unwrap() == 15 {
-            *AWID.lock().unwrap() = 0;
-        }
-        else {
-            *AWID.lock().unwrap() += 1;
-        }
+        *AWID.lock().unwrap() += 1;
         payload
     }
 }

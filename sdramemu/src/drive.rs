@@ -126,7 +126,7 @@ impl ShadowMem {
             );
 
             info!(
-                "writing({:#02x}) {:#08x} -> {:#08x}/{:#} with strb:{:#08b}",
+                "writing({:#02x}) {:#08x} -> {:#08x}/{:#} with strb:{:#04b}",
                 payload.id,
                 payload.data[item_idx],
                 current_addr,
@@ -186,9 +186,7 @@ pub(crate) struct Driver {
     shadow_mem: ShadowMem,
 
     axi_write_done_fifo: VecDeque<AxiWritePayload>,
-
     axi_write_fifo: VecDeque<AxiWritePayload>,
-
     axi_read_fifo: VecDeque<AxiWritePayload>,
 }
 
@@ -232,7 +230,6 @@ impl Driver {
     pub(crate) fn new(scope: SvScope, args: &OfflineArgs) -> Self {
         #[cfg(feature = "trace")]
         let (dump_start, dump_end) = parse_range(&args.dump_range);
-
         Self {
             scope,
 
@@ -321,7 +318,7 @@ impl Driver {
 
     pub(crate) fn axi_read_ready(&mut self) -> AxiReadPayload {
         trace!("axi_read_ready");
-        if self.axi_write_done_fifo.is_empty() {
+        if self.axi_write_done_fifo.is_empty() || !self.axi_read_fifo.is_empty() {
             let mut payload = AxiReadPayload::random();
             payload.valid = 0;
             payload
