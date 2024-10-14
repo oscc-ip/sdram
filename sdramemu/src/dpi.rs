@@ -105,7 +105,12 @@ impl AxiWritePayload {
             region: 0xbb,
             size: burst_size,
         };
-        *AWID.lock().unwrap() += 1;
+        if *AWID.lock().unwrap() == 15 {
+            *AWID.lock().unwrap() = 0;
+        }
+        else {
+            *AWID.lock().unwrap() += 1;
+        }
         payload
     }
 }

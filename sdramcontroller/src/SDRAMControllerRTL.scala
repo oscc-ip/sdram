@@ -919,6 +919,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     bank_q := 0.U(SDRAM_BANK_W.W)
     data_rd_en_q := true.B
 
+    val req_wr_q_q = RegInit(false.B)
+    req_wr_q_q := req_wr_q
+
+    dontTouch(req_wr_q_q)
+
     switch(state_q) {
       is(STATE_INIT) {
         when(refresh_timer_q === 50.U) {
@@ -980,28 +985,32 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         dqm_q := 0.U(SDRAM_DQM_W.W)
       }
       is(STATE_WRITE0) {
-        command_q := CMD_WRITE
-        /** Disable AUTO PRECHARGE (auto close of row) */
-        addr_q := addr_col_w | (0.U(1.W) << BIT_AUTO_PRECHARGE)
-        bank_q := addr_bank_w
-        data_q := ram_write_data_w(15, 0)
+        when (req_wr_q) {
+          command_q := CMD_WRITE
+          /** Disable AUTO PRECHARGE (auto close of row) */
+          addr_q := addr_col_w | (0.U(1.W) << BIT_AUTO_PRECHARGE)
+          bank_q := addr_bank_w
+          data_q := ram_write_data_w(15, 0)
 
-        /** Because data width is 16 bit, only 2 bits are needed to implement
-          * byte mask. Low effective.
-          */
-        dqm_q := ~ram_wr_w(1, 0)
-        dqm_buffer_q := ~ram_wr_w(3, 2)
+          /** Because data width is 16 bit, only 2 bits are needed to implement
+            * byte mask. Low effective.
+            */
+          dqm_q := ~ram_wr_w(1, 0)
+          dqm_buffer_q := ~ram_wr_w(3, 2)
 
-        data_rd_en_q := false.B
+          data_rd_en_q := false.B
+        }
       }
       is(STATE_WRITE1) {
-        command_q := CMD_NOP
-        data_q := data_buffer_q
+        when (req_wr_q_q) {
+          command_q := CMD_NOP
+          data_q := data_buffer_q
 
-        /** Disable AUTO PRECHARGE (auto close of row) */
-        addr_q := addr_q | (0.U(1.W) << BIT_AUTO_PRECHARGE)
+          /** Disable AUTO PRECHARGE (auto close of row) */
+          addr_q := addr_q | (0.U(1.W) << BIT_AUTO_PRECHARGE)
 
-        dqm_q := dqm_buffer_q
+          dqm_q := dqm_buffer_q
+        }
       }
     }
 
