@@ -24,7 +24,7 @@
         "supportProt": false
     },
     "sdramParameter": {
-        "dataWidth": 32,
-        "csWidth": 4
+        "dataWidth": 16,
+        "csWidth": 1
     }
 }

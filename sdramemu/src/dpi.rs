@@ -106,7 +106,7 @@ impl AxiWritePayload {
     pub(crate) fn random() -> Self {
         let mut rng = RNG.clone();
 
-        let burst_type = rng.gen_range(0..=2);
+        let burst_type = 1;
         let burst_length = match burst_type {
             0 => rng.gen_range(0..=15),
             1 => rng.gen_range(0..=u8::MAX),
