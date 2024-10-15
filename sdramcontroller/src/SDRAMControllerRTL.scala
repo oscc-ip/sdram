@@ -21,27 +21,23 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
   // ==========================================================================
   /** Calculate the next address of AXI4 bus. */
   private def calculateAddressNext(
-      addr: UInt,
-      axType: UInt,
-      axLen: UInt,
-      axSize: UInt
-  ): UInt =
-    MuxLookup(axType, addr + 4.U)(
+    addr: UInt,
+    axType: UInt,
+    axLen: UInt,
+    axSize: UInt
+  ): UInt = {
+    val shiftAmount = (1.U << axSize).asUInt
+    MuxLookup(axType, addr + shiftAmount)(
       Seq(
         FIXED -> addr,
-        INCR -> (addr + Mux(axSize === 0.U,
-                            1.U,
-                        Mux(axSize === 1.U,
-                            2.U,
-                        Mux(axSize === 2.U,
-                            4.U,
-                            4.U)))),
+        INCR -> (addr + shiftAmount),
         WARP -> {
           val mask = Cat(axLen, "b11".U(2.W)).pad(32)
-          (addr & (~mask).asUInt) | ((addr + 4.U) & mask)
+          (addr & (~mask).asUInt) | ((addr + shiftAmount) & mask)
         }
       )
     )
+  }
 
   // ==========================================================================
   // SDRAM Main
@@ -283,7 +279,9 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     u_response.io.clk := clock
     u_response.io.rst_n := !reset
 
-    u_response.io.data_in := ram_read_data_w
+    val ram_addr_w_out = WireInit(0.U(32.W))
+
+    u_response.io.data_in := ram_read_data_w >> (ram_addr_w_out(1, 0) << 3.U)
     u_response.io.push_req_n := !ram_ack_w
 
     u_response.io.diag_n := true.B
@@ -337,6 +335,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     dontTouch(rd_w)
 
     val ram_addr_w = addr_w
+    ram_addr_w_out := addr_w
     val ram_write_data_w = axi.w.bits.data
     val ram_rd_w = rd_w
     val ram_wr_w = Mux(wr_w, axi.w.bits.strb, 0.U(4.W))

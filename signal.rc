@@ -2,11 +2,11 @@ Magic 271485
 Revision Verdi_V-2023.12
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 25 2556 1228 388 134
+viewPort 0 25 2556 809 388 134
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-15-09-32-02/trace.fsdb"
+openDirFile -d / "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-15-15-13-52/trace.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -48,7 +48,7 @@ curSTATUS ByChange
 
 
 addGroup "G1"
-activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-15-09-32-02/trace.fsdb"
+activeDirFile "" "/home/myyerrol/sdram/sdram-sim-result/all/2024-10-15-15-13-52/trace.fsdb"
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 /SDRAMControllerTestBench/dut/clock
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -holdScope reset
 addSignal -c ID_RED5 -ls solid -lw 1 -h 15 -UNSIGNED -ASC -holdScope dbg_state[79:0]
@@ -124,7 +124,6 @@ addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -BIN -holdScope req_out_w[
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope req_out_valid_w
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_is_write_w
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_is_read_w
-addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -holdScope resp_is_last_w_rd
 addSignal -h 15 -UNSIGNED -BIN -holdScope req_out_rd_r[1:0]
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -UDEC -holdScope resp_id_w[3:0]
 addSignal -c ID_BLUE6 -ls solid -lw 1 -h 15 -UNSIGNED -HEX -holdScope ram_read_data_w[31:0]
