@@ -411,7 +411,13 @@ impl Driver {
         for idx in 0..len {
             let strb = payload.strb[idx as usize];
             let bytes = vec[idx as usize].to_be_bytes().to_vec();
-            rdata_bytes.extend(bytes[bytes.len() - strb.count_ones() as usize..].iter());
+            let trimed = bytes[bytes.len() - strb.count_ones() as usize..].iter();
+            info!(
+                "trimed: 0x{} -> 0x{}",
+                hex::encode(&bytes),
+                hex::encode(&trimed)
+            );
+            rdata_bytes.extend(trimed);
         }
         driver_assert_eq!(
             self,
