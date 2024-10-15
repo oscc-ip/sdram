@@ -4,19 +4,15 @@
 use crate::drive::Driver;
 use crate::{OfflineArgs, AXI_SIZE};
 use common::plusarg::PlusArgMatcher;
-use common::MEM_SIZE;
-use core::mem;
 use once_cell::sync::Lazy;
 use rand::prelude::SliceRandom;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use std::cell::LazyCell;
 use std::ffi::*;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use svdpi::SvScope;
-use tracing::{debug, error, info, trace};
+use tracing::{info, trace};
 
 pub type SvBitVecVal = u32;
 
@@ -89,9 +85,9 @@ static RNG: Lazy<Arc<Mutex<StdRng>>> = Lazy::new(|| {
 });
 
 impl AxiWritePayload {
-    fn generate_random_strb(size: u8, width: u8, rng: &mut StdRng) -> u8 {
-        let ones_count = 1 << size;
-        let zeros_count = (1 << width) - ones_count;
+    fn generate_random_strb(use_bit: u8, total_bit: u8, rng: &mut StdRng) -> u8 {
+        let ones_count = 1 << use_bit;
+        let zeros_count = (1 << total_bit) - ones_count;
 
         let mut bits: Vec<u8> = vec![1; ones_count as usize];
         bits.extend(vec![0; zeros_count as usize]);
@@ -259,7 +255,7 @@ unsafe fn fill_axi_payload<T: ToBytes>(dst: *mut SvBitVecVal, payload: &T) {
 unsafe extern "C" fn axi_read_done_axi4Probe(
     rdata: *const u32,
     len: u8,
-    lastData: u32,
+    last_data: u32,
     rid: u8,
     rresp: u8,
     ruser: u8,
@@ -267,13 +263,13 @@ unsafe extern "C" fn axi_read_done_axi4Probe(
     let rdata_slice = std::slice::from_raw_parts(rdata, 256);
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
-    driver.axi_read_done(rdata_slice.to_vec(), len, lastData, rid, rresp, ruser);
+    driver.axi_read_done(rdata_slice.to_vec(), len, last_data, rid, rresp, ruser);
 }
 
 /// evaluate at AW ready.
 #[no_mangle]
 unsafe extern "C" fn axi_write_ready_axi4Probe(payload: *mut SvBitVecVal) {
-    debug!("axi_write_ready_axi4Probe");
+    trace!("axi_write_ready_axi4Probe");
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
     let response = driver.axi_write_ready();
@@ -283,7 +279,7 @@ unsafe extern "C" fn axi_write_ready_axi4Probe(payload: *mut SvBitVecVal) {
 /// evaluate at B fire.
 #[no_mangle]
 unsafe extern "C" fn axi_write_done_axi4Probe(bid: c_uchar, bresp: c_uchar, buser: c_uchar) {
-    debug!("axi_write_done_axi4Probe (bid={bid}, bresp={bresp}, buser={buser})");
+    trace!("axi_write_done_axi4Probe (bid={bid}, bresp={bresp}, buser={buser})");
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
     driver.axi_write_done(bid, bresp, buser);
@@ -292,7 +288,7 @@ unsafe extern "C" fn axi_write_done_axi4Probe(bid: c_uchar, bresp: c_uchar, buse
 /// evaluate at AR ready.
 #[no_mangle]
 unsafe extern "C" fn axi_read_ready_axi4Probe(payload: *mut SvBitVecVal) {
-    debug!("axi_read_ready_axi4Probe");
+    trace!("axi_read_ready_axi4Probe");
     let mut driver = DPI_TARGET.lock().unwrap();
     let driver = driver.as_mut().unwrap();
     let response = driver.axi_read_ready();

@@ -1,15 +1,10 @@
-use common::MEM_SIZE;
 use svdpi::{get_time, SvScope};
 use tracing::{error, info, trace};
 
-use crate::dpi::ToBytes;
 use crate::dpi::*;
 use crate::driver_assert_eq;
 use crate::{OfflineArgs, AXI_SIZE};
-use std::collections::HashMap;
-use std::collections::VecDeque;
-use std::hash::Hash;
-use std::string;
+use std::collections::{HashMap, VecDeque};
 
 struct ShadowMem {
     mem: Vec<u8>,
@@ -18,7 +13,7 @@ struct ShadowMem {
 impl ShadowMem {
     pub fn new() -> Self {
         Self {
-            mem: vec![0; MEM_SIZE],
+            mem: vec![0; 0xffff_ffff - 0xfc00_0000],
         }
     }
 
@@ -377,7 +372,7 @@ impl Driver {
         &mut self,
         rdata: Vec<u32>,
         len: u8,
-        lastData: u32,
+        last_data: u32,
         rid: u8,
         rresp: u8,
         ruser: u8,
@@ -412,7 +407,7 @@ impl Driver {
             .read_mem_axi(AxiReadPayload::from_write_payload(&payload));
         let rdata_bytes = {
             let mut vec = rdata[..(len - 1) as usize].to_vec();
-            vec.push(lastData);
+            vec.push(last_data);
             vec.to_bytes_be()
         };
         driver_assert_eq!(
