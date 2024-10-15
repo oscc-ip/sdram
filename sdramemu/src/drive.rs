@@ -32,7 +32,6 @@ impl ShadowMem {
     // return: Vec<u8> with len=bus_size
     pub fn read_mem_axi(&self, payload: AxiReadPayload) -> Vec<u8> {
         let bytes_number: u32 = 1 << payload.size;
-
         let transfer_count: u32 = (payload.len + 1) as u32;
 
         let mut lower_boundary = 0;
@@ -45,12 +44,15 @@ impl ShadowMem {
                 payload.addr / (bytes_number * transfer_count) * (bytes_number * transfer_count);
             upper_boundary = lower_boundary + bytes_number * transfer_count;
             assert!(
-                payload.len == 2 || payload.len == 4 || payload.len == 8 || payload.len == 16,
+                transfer_count == 2
+                    || transfer_count == 4
+                    || transfer_count == 8
+                    || transfer_count == 16,
                 "unsupported burst len"
             );
         }
 
-        let mut current_addr = payload.addr;
+        let mut current_addr = payload.addr - 0xfc000000;
         assert!(
             self.is_addr_align(payload.addr, payload.size),
             "address is unaligned!"
@@ -111,7 +113,7 @@ impl ShadowMem {
             );
         }
 
-        let mut current_addr = payload.addr;
+        let mut current_addr = payload.addr - 0xfc000000;
         assert!(
             self.is_addr_align(payload.addr, payload.size),
             "address is unaligned!"
@@ -124,12 +126,13 @@ impl ShadowMem {
 
             assert_eq!(
                 payload.strb[item_idx].count_ones(),
-                1 << payload.size >> 3,
-                "the number of will write bytes is not equal"
+                1 << payload.size,
+                "the number of will write bytes is not equal, size = {}",
+                payload.size
             );
 
             info!(
-                "writing({:#02x}) {:#08x} -> {:#08x}/{:#} with strb:{:#04b}",
+                "writing(0x{:02x}) 0x{:08x} -> 0x{:08x}/{} with strb:0b{:04b}",
                 payload.id,
                 payload.data[item_idx],
                 current_addr,
@@ -142,11 +145,15 @@ impl ShadowMem {
                 payload.strb[item_idx]
             );
 
-            for (write_count, byte_idx) in (0..AXI_SIZE / 8).enumerate() {
-                let byte_mask: bool = (payload.strb[item_idx] >> byte_idx) & 1 != 0;
+            let mut write_count = 0;
+            for byte_idx in 0..AXI_SIZE / 8 {
+                let byte_mask: bool =
+                    (payload.strb[item_idx] >> (AXI_SIZE / 8 - (byte_idx + 1))) & 1 != 0;
                 if byte_mask {
-                    self.mem[(current_addr + write_count as u32 - 0xfc000000) as usize] =
-                        (payload.data[item_idx] >> (byte_idx * 8) & 0xff) as u8;
+                    self.mem[(current_addr + write_count as u32) as usize] =
+                        (payload.data[item_idx] >> ((AXI_SIZE / 8 - (byte_idx + 1)) * 8) & 0xff)
+                            as u8;
+                    write_count += 1;
                 }
             }
 
@@ -165,7 +172,6 @@ impl ShadowMem {
                 }
             }
         }
-        info!("axi write finished.");
     }
 }
 
@@ -328,6 +334,7 @@ impl Driver {
             payload.id,
             bid
         );
+        self.shadow_mem.write_mem_axi(payload.clone());
         self.axi_write_done_fifo.push_back(payload);
     }
 
@@ -336,7 +343,6 @@ impl Driver {
         *self.statistic.entry("axi_write".to_string()).or_insert(0) += 1;
         let payload = AxiWritePayload::random();
         self.axi_write_fifo.push_back(payload.clone());
-        self.shadow_mem.write_mem_axi(payload.clone());
         payload
     }
 
@@ -352,7 +358,7 @@ impl Driver {
             let payload = AxiReadPayload::from_write_payload(&write_payload);
             self.axi_read_fifo.push_back(write_payload);
             info!(
-                "reading({:#02x}) <- {:#08x}/{:#} with len = {:#02x}",
+                "reading(0x{:02x}) <- 0x{:08x}/{:#} with len = 0x{:02x}",
                 payload.id,
                 payload.addr,
                 match payload.burst {
@@ -377,8 +383,8 @@ impl Driver {
         ruser: u8,
     ) {
         info!(
-            "axi_read_done (rid={rid:#02x}, \
-    rresp={rresp:#08x}, ruser={ruser:#08x})"
+            "axi_read_done (rid=0x{rid:02x}, \
+    rresp=0x{rresp:08x}, ruser=0x{ruser:08x})"
         );
         *self
             .statistic
@@ -401,9 +407,9 @@ impl Driver {
             len,
             payload.len + 1
         );
-        let compare = payload.data[..(payload.len + 1) as usize]
-            .to_vec()
-            .to_bytes_be();
+        let compare = self
+            .shadow_mem
+            .read_mem_axi(AxiReadPayload::from_write_payload(&payload));
         let rdata_bytes = {
             let mut vec = rdata[..(len - 1) as usize].to_vec();
             vec.push(lastData);

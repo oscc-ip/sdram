@@ -12,6 +12,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::cell::LazyCell;
 use std::ffi::*;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use svdpi::SvScope;
@@ -77,20 +78,20 @@ pub(crate) struct AxiWritePayload {
     pub(crate) size: u8,
 }
 
-static RNG: Lazy<StdRng> = Lazy::new(|| {
+static RNG: Lazy<Arc<Mutex<StdRng>>> = Lazy::new(|| {
     let start = SystemTime::now();
     let since_epoch = start
         .duration_since(UNIX_EPOCH)
         .expect("Clock may have gone backwards");
     let seed = since_epoch.as_secs();
     info!("Using seed: {:#x}", seed);
-    StdRng::seed_from_u64(seed)
+    Arc::new(Mutex::new(StdRng::seed_from_u64(seed)))
 });
 
 impl AxiWritePayload {
     fn generate_random_strb(size: u8, width: u8, rng: &mut StdRng) -> u8 {
-        let ones_count = 1 << size >> 3;
-        let zeros_count = width - ones_count;
+        let ones_count = 1 << size;
+        let zeros_count = (1 << width) - ones_count;
 
         let mut bits: Vec<u8> = vec![1; ones_count as usize];
         bits.extend(vec![0; zeros_count as usize]);
@@ -104,9 +105,10 @@ impl AxiWritePayload {
         result
     }
     pub(crate) fn random() -> Self {
-        let mut rng = RNG.clone();
+        let mut rng = RNG.lock().unwrap();
 
         let burst_type = 1;
+        // let burst_type = rng.gen_range(0..=2);
         let burst_length = match burst_type {
             0 => rng.gen_range(0..=15),
             1 => rng.gen_range(0..=u8::MAX),
@@ -114,16 +116,17 @@ impl AxiWritePayload {
             _ => 0,
         };
         let burst_width = AXI_SIZE >> 3;
-        let burst_size = 7 - AXI_SIZE.leading_zeros() as u8;
-        // let burst_size = rng.gen_range(0..=7 - AXI_SIZE.leading_zeros()) as u8;
-        let bytes_number = 8 << burst_size;
+        let MAX_BURST_WIDTH = 7 - burst_width.leading_zeros() as u8;
+        // let burst_size = MAX_BURST_WIDTH;
+        let burst_size = rng.gen_range(0..=MAX_BURST_WIDTH);
+        let bytes_number = 8 << (1 << burst_size);
         let payload = AxiWritePayload {
             id: *AWID.lock().unwrap() & 0xF,
             len: burst_length - 1,
             addr: rng.gen_range(0xfc000000..=u32::MAX) / bytes_number * bytes_number,
             data: (0..256).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
             strb: (0..256)
-                .map(|_| Self::generate_random_strb(burst_size, burst_width, &mut rng))
+                .map(|_| Self::generate_random_strb(burst_size, MAX_BURST_WIDTH, &mut rng))
                 .collect(),
             wUser: (0..256).map(|_| rng.gen_range(0..=u8::MAX)).collect(),
             awUser: rng.gen_range(0..=u8::MAX),
