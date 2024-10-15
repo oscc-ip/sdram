@@ -405,11 +405,14 @@ impl Driver {
         let compare = self
             .shadow_mem
             .read_mem_axi(AxiReadPayload::from_write_payload(&payload));
-        let rdata_bytes = {
-            let mut vec = rdata[..(len - 1) as usize].to_vec();
-            vec.push(last_data);
-            vec.to_bytes_be()
-        };
+        let mut vec = rdata[..(len - 1) as usize].to_vec();
+        vec.push(last_data);
+        let mut rdata_bytes: Vec<u8> = Vec::new();
+        for idx in 0..len {
+            let strb = payload.strb[idx as usize];
+            let bytes = vec[idx as usize].to_be_bytes().to_vec();
+            rdata_bytes.extend(bytes[bytes.len() - strb.count_ones() as usize..].iter());
+        }
         driver_assert_eq!(
             self,
             rdata_bytes,
