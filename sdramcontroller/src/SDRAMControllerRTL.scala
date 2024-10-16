@@ -55,6 +55,8 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     val req_len_q = RegInit(0.U(8.W))
     /** AXI4 read and write addr */
     val req_addr_q = RegInit(0.U(32.W))
+    val req_addr_q_before = RegInit(0.U(32.W))
+    val req_addr_q_before_read_delay = RegInit(0.U((32 * (SDRAM_READ_LATENCY + 2)).W))
     /** AXI4 write request enable */
     val req_wr_q = RegInit(false.B)
     val req_wr_q_q = RegInit(false.B)
@@ -109,8 +111,11 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         req_wr_q := false.B
       }
       req_addr_q := calculateAddressNext(req_addr_q, req_axburst_q, req_axlen_q, req_axsize_q)
+      req_addr_q_before := req_addr_q
       req_len_q := req_len_q - 1.U
     }
+
+    req_addr_q_before_read_delay := Cat(req_addr_q_before, req_addr_q_before_read_delay) >> 32.U
 
     /** When read or write handshake happens, update request registers. */
     when(axi.aw.valid && axi.aw.ready) {
@@ -127,6 +132,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
           axi.aw.bits.len,
           axi.aw.bits.size
         )
+        req_addr_q_before := axi.aw.bits.addr
       }
       .otherwise {
         req_wr_q := true.B
@@ -136,6 +142,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         req_axlen_q := axi.aw.bits.len
         req_axsize_q := axi.aw.bits.size
         req_addr_q := axi.aw.bits.addr
+        req_addr_q_before := req_addr_q
       }
       req_prio_q := !req_prio_q
     }
@@ -148,6 +155,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
         axi.ar.bits.len,
         axi.ar.bits.size
       )
+      req_addr_q_before := axi.ar.bits.addr
       req_id_q := axi.ar.bits.id
       req_axburst_q := axi.ar.bits.burst
       req_axlen_q := axi.ar.bits.len
@@ -281,7 +289,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
 
     val ram_addr_w_out = WireInit(0.U(32.W))
 
-    u_response.io.data_in := ram_read_data_w >> (ram_addr_w_out(1, 0) << 3.U)
+    u_response.io.data_in := ram_read_data_w >> (req_addr_q_before_read_delay(1, 0) << 3.U)
     u_response.io.push_req_n := !ram_ack_w
 
     u_response.io.diag_n := true.B

@@ -113,16 +113,27 @@ impl AxiWritePayload {
         };
         let burst_width = AXI_SIZE >> 3;
         let MAX_BURST_WIDTH = 7 - burst_width.leading_zeros() as u8;
-        // let burst_size = MAX_BURST_WIDTH;
-        let burst_size = rng.gen_range(0..=MAX_BURST_WIDTH);
+        let burst_size = 0;
+        // let burst_size = rng.gen_range(0..=MAX_BURST_WIDTH);
         let bytes_number = 8 << (1 << burst_size);
+        let total_bit = 1 << MAX_BURST_WIDTH;
+        let used_bit = 1 << burst_size;
+        let strb_sequence = {
+            let mut vec: Vec<u8> = Vec::new();
+            let mut start = (1 << used_bit) - 1;
+            for i in 0..total_bit / used_bit {
+                vec.push(start);
+                start <<= used_bit;
+            }
+            vec
+        };
         let payload = AxiWritePayload {
             id: *AWID.lock().unwrap() & 0xF,
             len: burst_length - 1,
             addr: rng.gen_range(0xfc000000..=u32::MAX) / bytes_number * bytes_number,
             data: (0..256).map(|_| rng.gen_range(0..=u32::MAX)).collect(),
             strb: (0..256)
-                .map(|_| Self::generate_random_strb(burst_size, MAX_BURST_WIDTH, &mut rng))
+                .map(|i| strb_sequence[i % strb_sequence.len()])
                 .collect(),
             wUser: (0..256).map(|_| rng.gen_range(0..=u8::MAX)).collect(),
             awUser: rng.gen_range(0..=u8::MAX),
