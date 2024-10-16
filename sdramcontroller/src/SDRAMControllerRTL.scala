@@ -43,7 +43,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
   // SDRAM Main
   // ==========================================================================
   withClockAndReset(clock, reset) {
-    val SDRAM_READ_LATENCY = 2
+    val SDRAM_READ_LATENCY = 3
 
     // ========================================================================
     // AXI4 Request and Response
@@ -56,7 +56,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     /** AXI4 read and write addr */
     val req_addr_q = RegInit(0.U(32.W))
     val req_addr_q_before = RegInit(0.U(32.W))
-    val req_addr_q_before_read_delay = RegInit(0.U((32 * (SDRAM_READ_LATENCY + 2)).W))
+    val req_addr_q_before_read_delay = RegInit(0.U((32 * (SDRAM_READ_LATENCY + 1)).W))
     /** AXI4 write request enable */
     val req_wr_q = RegInit(false.B)
     val req_wr_q_q = RegInit(false.B)
@@ -394,7 +394,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // SDRAM Parameters
     // ------------------------------------------------------------------------
     /** SDRAM External Parameters (User can customize them) */
-    val SDRAM_MHZ = 50
+    val SDRAM_MHZ = 100
     val SDRAM_ADDR_W = 24
     val SDRAM_COL_W = 9
 
@@ -1092,7 +1092,7 @@ trait SDRAMControllerRTL extends HasSDRAMControllerInterface {
     // SDRAM Innput / Output
     // ------------------------------------------------------------------------
     // TODO: this is forbidden in RTL, use CTS blackbox instead.
-    sdram.ck.foreach(_ := (~clock.asBool).asBool.asClock)
+    sdram.ck.foreach(_ := (clock.asBool).asBool.asClock)
     sdram.cke := cke_q
     sdram.cs := command_q(3)
     sdram.ras := command_q(2)

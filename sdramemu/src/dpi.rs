@@ -113,8 +113,8 @@ impl AxiWritePayload {
         };
         let burst_width = AXI_SIZE >> 3;
         let MAX_BURST_WIDTH = 7 - burst_width.leading_zeros() as u8;
-        let burst_size = 0;
-        // let burst_size = rng.gen_range(0..=MAX_BURST_WIDTH);
+        // let burst_size = 0;
+        let burst_size = rng.gen_range(0..=MAX_BURST_WIDTH);
         let bytes_number = 8 << (1 << burst_size);
         let total_bit = 1 << MAX_BURST_WIDTH;
         let used_bit = 1 << burst_size;
