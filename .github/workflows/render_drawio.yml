@@ -1,0 +1,34 @@
+name: Render drawio
+
+on:
+  push:
+    branches: ["image"]
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Convert diagram to svg
+        uses: rlespinasse/drawio-export-action@v2
+        with:
+          format: svg
+          path: diagram
+          output: render
+          remove-page-suffix: true
+
+      - name: Upload svg
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add diagram/render/*.svg
+          git diff-index --quiet HEAD || git commit -m "[bot] render diagrams"
+          git push
