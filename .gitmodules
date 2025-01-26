@@ -1,0 +1,6 @@
+[submodule "lib/BlueAXI"]
+	path = lib/BlueAXI
+	url = https://github.com/esa-tu-darmstadt/BlueAXI.git
+[submodule "lib/BlueLib"]
+	path = lib/BlueLib
+	url = https://github.com/esa-tu-darmstadt/BlueLib.git

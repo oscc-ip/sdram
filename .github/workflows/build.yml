@@ -18,6 +18,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Cache bsc
       id: cache-bsc
@@ -41,12 +43,20 @@ jobs:
         make -j$(nproc) PREFIX="$PWD/../bsc"
         cd ..
 
-    - name: Build project
+    - name: Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: build
+        key: build-bsc-${{ matrix.version }}-${{ matrix.os }}-${{ github.run_id }}
+        restore-keys: |
+          build-bsc-${{ matrix.version }}-${{ matrix.os }}
+
+    - name: Build Project
       run: |
         export PATH=$PATH:${{ github.workspace }}/bsc/bin
         make build
 
-    - name: Upload artifact
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         path: build/generated

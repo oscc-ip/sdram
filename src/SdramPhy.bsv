@@ -3,10 +3,7 @@ import TriState :: *;
 import ConstIfc :: *;
 
 typedef CmdEnum SdramPhyRequest;
-
-typedef struct {
-    Bit#(16) data;
-} SdramPhyResponse deriving (Bits, Eq, FShow);
+typedef Bit#(16) SdramPhyResponse;
 
 (* always_ready, always_enabled *)
 interface SdramIfc;
@@ -26,9 +23,10 @@ interface SdramPhyIfc;
     (* prefix = "" *)
     interface SdramIfc out;
     method Action write(SdramPhyRequest req);
-    method Bit#(16) read;
+    method SdramPhyResponse read;
 endinterface
 
+(* synthesize *)
 module mkSdramPhy(SdramPhyIfc);
     Wire#(Bit#(16)) dqiIn <- mkWire;
     Wire#(Bit#(4)) cmdOut <- mkDWire('b0111);
@@ -41,9 +39,7 @@ module mkSdramPhy(SdramPhyIfc);
     RWire#(Bit#(1)) ckeWire <- mkRWire();
 
     rule ckeWriteBack;
-        if (isValid(ckeWire.wget())) begin
-            ckeReg <= fromMaybe(?, ckeWire.wget());
-        end
+        ckeReg <= fromMaybe(ckeReg, ckeWire.wget());
     endrule
 
     method Action write(SdramPhyRequest req);
@@ -59,7 +55,6 @@ module mkSdramPhy(SdramPhyIfc);
                 dqDirOut <= 1;
             end
             tagged WriteData .d: begin
-                cmdOut <= 'b0000;
                 dqmOut <= d.dqm;
                 dqoOut <= d.data;
                 dqDirOut <= 1;
@@ -72,10 +67,12 @@ module mkSdramPhy(SdramPhyIfc);
                     tagged Valid {.bank}: begin
                         cmdOut <= 'b0010;
                         bankOut <= bank;
-                        addrOut <= 'b0010000000000;
                     end
                     tagged Invalid: begin
                         cmdOut <= 'b0010;
+                        Bit#(13) addrTmp = 0;
+                        addrTmp[10] = 1;
+                        addrOut <= addrTmp;
                     end
                 endcase
             end
@@ -110,7 +107,7 @@ module mkSdramPhy(SdramPhyIfc);
         endcase
     endmethod
 
-    method Bit#(16) read();
+    method SdramPhyResponse read();
         return dqiIn;
     endmethod
 
@@ -142,8 +139,18 @@ module mkSdramPhy(SdramPhyIfc);
         method Bit#(1) cke;
             return fromMaybe(ckeReg, ckeWire.wget());
         endmethod
+
+        method Bit#(2) dqm;
+            return dqmOut;
+        endmethod
+
+        method Bit#(16) dqo;
+            return dqoOut;
+        endmethod
+
+        method Bit#(1) dqDir;
+            return dqDirOut;
+        endmethod
     endinterface
-
 endmodule
-
 endpackage

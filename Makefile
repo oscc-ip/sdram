@@ -4,8 +4,8 @@ SRCDIR = src
 VLOGDIR = $(BUILDDIR)/generated
 LIST_VLOG = script/listVlogFiles.tcl
 
-TOP ?= mkSdramPhy
-FILE = $(SRCDIR)/SdramPhy.bsv
+TOP ?= mkSdramController
+FILE = $(SRCDIR)/SdramController.bsv
 
 
 TRANSFLAGS = -aggressive-conditions # -lift -split-if
@@ -23,12 +23,14 @@ DEBUGFLAGS = -check-assert \
 	-show-stats \
 	-warn-action-shadowing \
 	-warn-method-urgency \
-#	-promote-warnings ALL
+	-promote-warnings ALL
 VERILOGFLAGS = -verilog -remove-dollar -remove-unused-modules # -use-dpi -verilog-filter cmd
 BLUESIMFLAGS = -parallel-sim-link 16 # -systemc
 OUTDIR = -bdir $(BUILDDIR) -info-dir $(BUILDDIR) -simdir $(BUILDDIR) -vdir $(BUILDDIR)
 WORKDIR = -fdir $(abspath .)
-BSVSRCDIR = -p +:$(abspath $(SRCDIR))
+LIBDIR = $(abspath ./lib/BlueAXI/src):$(abspath ./lib/BlueLib/src)
+# LIBDIR = %/Libraries/AMBA_TLM3/Axi4:%/Libraries/AMBA_TLM3/TLM3:%/Libraries/AMBA_TLM3/Axi:%/Libraries/Bus
+BSVSRCDIR = -p +:$(abspath $(SRCDIR)):$(LIBDIR)
 DIRFLAGS = $(BSVSRCDIR) $(OUTDIR) $(WORKDIR)
 MISCFLAGS = -show-timestamps -show-version # -steps 1000000000000000 -D macro
 RUNTIMEFLAGS = +RTS -K256M -RTS
@@ -38,7 +40,7 @@ build:
 	@mkdir -p $(BUILDDIR)
 	@bsc -elab $(VERILOGFLAGS) $(DIRFLAGS) $(MISCFLAGS) $(RECOMPILEFLAGS) $(RUNTIMEFLAGS) $(TRANSFLAGS) -g $(TOP) $(FILE)
 	@mkdir -p $(VLOGDIR)
-	@bluetcl $(LIST_VLOG) -bdir $(BUILDDIR) -vdir $(BUILDDIR) $(TOP) $(TOP) | grep -i '\.v' | xargs -I {} cp {} $(VLOGDIR)
+	@bluetcl $(LIST_VLOG) $(BSVSRCDIR) -bdir $(BUILDDIR) -vdir $(BUILDDIR) $(TOP) $(TOP) | grep -i '\.v' | xargs -I {} cp {} $(VLOGDIR)
 
 clean:
 	@rm -rf $(BUILDDIR)
