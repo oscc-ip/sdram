@@ -53,6 +53,7 @@ jobs:
 
     - name: Build Project
       run: |
+        rm -rf build/generated
         export PATH=$PATH:${{ github.workspace }}/bsc/bin
         make build
 
