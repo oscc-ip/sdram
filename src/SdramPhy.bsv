@@ -44,25 +44,25 @@ module mkSdramPhy(SdramPhyIfc);
 
     method Action write(SdramPhyRequest req);
         case (req) matches
-            tagged Nop: cmdOut <= 'b0111;
-            tagged ReadAddr {.col}: begin
+            tagged Cmd_Nop: cmdOut <= 'b0111;
+            tagged Cmd_ReadAddr {.col}: begin
                 cmdOut <= 'b0101;
                 addrOut <= extend(col);
             end
-            tagged WriteAddr {.col}: begin
+            tagged Cmd_WriteAddr {.col}: begin
                 cmdOut <= 'b0100;
                 addrOut <= extend(col);
                 dqDirOut <= 1;
             end
-            tagged WriteData .d: begin
+            tagged Cmd_WriteData .d: begin
                 dqmOut <= d.dqm;
                 dqoOut <= d.data;
                 dqDirOut <= 1;
             end
-            tagged Stop: begin
+            tagged Cmd_Stop: begin
                 cmdOut <= 'b0110;
             end
-            tagged Precharge .d: begin
+            tagged Cmd_Precharge .d: begin
                 case (d) matches
                     tagged Valid {.bank}: begin
                         cmdOut <= 'b0010;
@@ -76,25 +76,25 @@ module mkSdramPhy(SdramPhyIfc);
                     end
                 endcase
             end
-            tagged Refresh .d: begin
+            tagged Cmd_Refresh .d: begin
                 if (d) begin
                     ckeWire.wset(0);
                 end
                 cmdOut <= 'b0001;
             end
-            tagged RefreshExit: begin
+            tagged Cmd_RefreshExit: begin
                 ckeWire.wset(1);
                 cmdOut <= 'b0110;
             end
-            tagged PowerDown: begin
+            tagged Cmd_PowerDown: begin
                 cmdOut <= 'b1000;
                 ckeWire.wset(0);
             end
-            tagged PowerDownExit: begin
+            tagged Cmd_PowerDownExit: begin
                 cmdOut <= 'b1000;
                 ckeWire.wset(1);
             end
-            tagged ModeLoad: begin
+            tagged Cmd_ModeLoad: begin
                 cmdOut <= 'b0000;
                 /*
                 * Burst Length: Full Page

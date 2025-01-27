@@ -42,6 +42,12 @@ build:
 	@mkdir -p $(VLOGDIR)
 	@bluetcl $(LIST_VLOG) $(BSVSRCDIR) -bdir $(BUILDDIR) -vdir $(BUILDDIR) $(TOP) $(TOP) | grep -i '\.v' | xargs -I {} cp {} $(VLOGDIR)
 
+test:
+	@mkdir -p $(BUILDDIR)
+	@bsc -elab -sim $(BLUESIMFLAGS) $(DEBUGFLAGS) $(DIRFLAGS) $(MISCFLAGS) $(RECOMPILEFLAGS) $(RUNTIMEFLAGS) -g mkTb $(FILE)
+	@bsc -sim $(BLUESIMFLAGS) $(DIRFLAGS) $(RECOMPILEFLAGS) -e mkTb -o $(SIMEXE)
+	$(SIMEXE)
+
 clean:
 	@rm -rf $(BUILDDIR)
 
