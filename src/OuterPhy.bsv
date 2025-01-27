@@ -14,12 +14,22 @@ interface AxiIfc;
 endinterface
 
 interface OuterIfc;
-    method Action write(Bit#(32) req);
-    method Bit#(32) read;
+    method ActionValue#(AXI4_Read_Rq#(AxiAddrWidth, AxiIdWidth, AxiUserWidth)) readArReq;
+    method ActionValue#(AXI4_Write_Rq_Addr#(AxiAddrWidth, AxiIdWidth, AxiUserWidth)) readAwReq;
+    method ActionValue#(AXI4_Write_Rq_Data#(AxiAddrWidth, AxiUserWidth)) readWReq;
+    method Action writeRResp(AXI4_Read_Rs#(AxiDataWidth, AxiIdWidth, AxiUserWidth) resp);
+    method Action writeBResp(AXI4_Write_Rs#(AxiIdWidth, AxiUserWidth) resp);
     method Bool arValid;
     method Bool awValid;
     interface AxiIfc axi;
 endinterface
+
+typedef union tagged {
+    AXI4_Read_Rq#(AxiAddrWidth, AxiIdWidth, AxiUserWidth) READ_ADDR_REQ;
+    AXI4_Write_Rq_Addr#(AxiAddrWidth, AxiIdWidth, AxiUserWidth) WRITE_ADDR_REQ;
+    void Invalid;
+} AddrReqType deriving (Bits, Eq, FShow);
+
 
 (* synthesize *)
 module mkOuterPhy(OuterIfc);
@@ -34,11 +44,27 @@ module mkOuterPhy(OuterIfc);
         arReqFifo.enq(d);
     endrule
 
-    method Action write(Bit#(32) req);
+    method ActionValue#(AXI4_Read_Rq#(AxiAddrWidth, AxiIdWidth, AxiUserWidth)) readArReq;
+        arReqFifo.deq;
+        return arReqFifo.first;
     endmethod
 
-    method Bit#(32) read;
-        return 0;
+    method ActionValue#(AXI4_Write_Rq_Addr#(AxiAddrWidth, AxiIdWidth, AxiUserWidth)) readAwReq;
+        awReqFifo.deq;
+        return awReqFifo.first;
+    endmethod
+
+    method ActionValue#(AXI4_Write_Rq_Data#(AxiAddrWidth, AxiUserWidth)) readWReq;
+        let d <- s_wr.request_data.get;
+        return d;
+    endmethod
+
+    method Action writeRResp(AXI4_Read_Rs#(AxiDataWidth, AxiIdWidth, AxiUserWidth) resp);
+        s_rd.response.put(resp);
+    endmethod
+
+    method Action writeBResp(AXI4_Write_Rs#(AxiIdWidth, AxiUserWidth) resp);
+        s_wr.response.put(resp);
     endmethod
 
     method Bool arValid;
