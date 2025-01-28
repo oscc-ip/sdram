@@ -17,51 +17,87 @@ jobs:
         version:
         - 2024.07
     runs-on: ${{ matrix.os }}
+    permissions:
+      actions: write
+      contents: read
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: true
 
+    - name: Setup dependencies
+      uses: daaku/gh-action-apt-install@v4
+      with:
+        packages: yosys
+
     - name: Cache bsc
       id: cache-bsc
       uses: actions/cache@v4
       with:
         path: bsc
-        key: ${{ matrix.os }}-bsc-${{ matrix.version }}-${{ hashFiles('.github/workflows/build.yml') }}
+        key: bsc-${{ matrix.version }}-${{ matrix.os }}-${{ hashFiles('.github/workflows/build.yml') }}
+
+    - name: Cleanup
+      if: steps.cache-bsc.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set +e
+        gh extension install actions/gh-actions-cache
+
+        REPO=${{ github.repository }}
+
+        echo "Fetching list of cache key"
+        cacheKeys=$(gh actions-cache list -R $REPO | cut -f 1 | grep ^bsc-)
+
+        echo "Deleting caches..."
+        for cacheKey in $cacheKeys
+        do
+            gh actions-cache delete $cacheKey -R $REPO --confirm
+        done
+        echo "Done"
 
     - name: Download bsc
       if: steps.cache-bsc.outputs.cache-hit != 'true'
       run: |
         wget -qO- https://github.com/B-Lang-org/bsc/releases/download/${{ matrix.version }}/bsc-${{ matrix.version }}-${{ matrix.os }}.tar.gz | tar xzf -
         mv bsc-${{ matrix.version }}-${{ matrix.os }} bsc
+        echo "${{ github.workspace }}/bsc/bin" >> "$GITHUB_PATH"
 
     - name: Install bsc-contrib
       if: steps.cache-bsc.outputs.cache-hit != 'true'
       run: |
-        export PATH=$PATH:${{ github.workspace }}/bsc/bin
         git clone https://github.com/B-Lang-org/bsc-contrib.git
         cd bsc-contrib
         make -j$(nproc) PREFIX="$PWD/../bsc"
         cd ..
 
-    - name: Cache Build Artifacts
-      uses: actions/cache@v4
-      with:
-        path: build
-        key: build-bsc-${{ matrix.version }}-${{ matrix.os }}-${{ github.run_id }}
-        restore-keys: |
-          build-bsc-${{ matrix.version }}-${{ matrix.os }}
+    - name: Download iEDA
+      if: steps.cache-bsc.outputs.cache-hit != 'true'
+      run: |
+        wget https://github.com/oscc-ip/artifact/releases/download/764f3f4/iEDA -O bsc/bin/iEDA
+        chmod +x bsc/bin/iEDA
+
+    - name: Setup Path
+      if: steps.cache-bsc.outputs.cache-hit == 'true'
+      run: |
+        echo "${{ github.workspace }}/bsc/bin" >> "$GITHUB_PATH"
 
     - name: Build Project
       run: |
-        rm -rf build/generated
-        export PATH=$PATH:${{ github.workspace }}/bsc/bin
         make build
+
+    - name: Generate Report
+      run: |
+        make sta
+
+    - name: Combine Files
+      run: |
         mv src/wrapper/* build/generated
         cat build/generated/* > top.v
 
-    - name: Upload Artifact
+    - name: Upload Combined File
       uses: actions/upload-artifact@v4
       with:
         name: top
@@ -72,6 +108,12 @@ jobs:
       with:
         name: generated
         path: build/generated
+
+    - name: Upload Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: report
+        path: build/report
 
   relase:
     needs: build

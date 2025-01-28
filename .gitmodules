@@ -4,3 +4,6 @@
 [submodule "lib/BlueLib"]
 	path = lib/BlueLib
 	url = https://github.com/esa-tu-darmstadt/BlueLib.git
+[submodule "lib/nangate"]
+	path = lib/nangate
+	url = https://github.com/oscc-ip/nangate.git
