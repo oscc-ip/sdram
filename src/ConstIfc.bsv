@@ -24,6 +24,7 @@ typedef union tagged {
     } Cmd_WriteData;
     void Cmd_Stop;
     Maybe#(Bit#(2)) Cmd_Precharge;
+    // True for self-refresh, False for auto-refresh
     Bool Cmd_Refresh;
     void Cmd_RefreshExit;
     struct {

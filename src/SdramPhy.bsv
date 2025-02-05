@@ -14,9 +14,10 @@ interface SdramIfc;
     method Bit#(1) cke;
     method Bit#(2) dqm;
     method Bit#(13) addr;
-    method Action dqi(Bit#(16) data);
+    (* prefix = "" *) method Action dqiAction(Bit#(16) dqi);
     method Bit#(16) dqo;
     method Bit#(1) dqDir;
+    method Bit#(2) bs;
 endinterface
 
 interface SdramPhyIfc;
@@ -86,6 +87,11 @@ module mkSdramPhy(SdramPhyIfc);
                 ckeWire.wset(1);
                 cmdOut <= 'b0110;
             end
+            tagged Cmd_Activate .d: begin
+                cmdOut <= 'b0011;
+                addrOut <= d.row;
+                bankOut <= d.bank;
+            end
             tagged Cmd_PowerDown: begin
                 cmdOut <= 'b1000;
                 ckeWire.wset(0);
@@ -112,8 +118,8 @@ module mkSdramPhy(SdramPhyIfc);
     endmethod
 
     interface SdramIfc out;
-        method Action dqi(Bit#(16) data);
-            dqiIn <= data;
+        method Action dqiAction(Bit#(16) dqi);
+            dqiIn <= dqi;
         endmethod
 
         method Bit#(13) addr;
@@ -150,6 +156,10 @@ module mkSdramPhy(SdramPhyIfc);
 
         method Bit#(1) dqDir;
             return dqDirOut;
+        endmethod
+
+        method Bit#(2) bs;
+            return bankOut;
         endmethod
     endinterface
 endmodule
