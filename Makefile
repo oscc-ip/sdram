@@ -7,6 +7,10 @@ LIST_VLOG = script/listVlogFiles.tcl
 TOP ?= mkSdramController
 FILE = $(SRC_DIR)/SdramController.bsv
 
+ifndef CLK_FREQ_MHZ
+    export CLK_FREQ_MHZ := 200
+endif
+
 TRANSFLAGS = -aggressive-conditions # -lift -split-if
 RECOMPILE_FLAG = -u -show-compiles
 SCHED_FLAG = -show-schedule -sched-dot # -show-rule-rel dMemInit_request_put doExecute
@@ -58,6 +62,7 @@ test:
 	$(SIM_EXE)
 
 sta: build
+	@echo "Using $(CLK_FREQ_MHZ)MHz for sta."
 	mkdir -p $(REPORT_DIR)
 	echo tcl $(SCRIPT_DIR)/yosys.tcl $(TOP) \"$(RTL_FILES)\" $(NETLIST_SYN_V) | yosys -l $(REPORT_DIR)/yosys.log -s -
 	iEDA -script $(SCRIPT_DIR)/fix-fanout.tcl $(SDC_FILE) $(NETLIST_SYN_V) $(TOP) $(NETLIST_FIXED_V) 2>&1 | tee $(REPORT_DIR)/fix-fanout.log

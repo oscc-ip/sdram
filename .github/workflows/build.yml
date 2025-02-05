@@ -89,6 +89,8 @@ jobs:
         make build
 
     - name: Generate Report
+      env:
+        CLK_FREQ_MHZ: 200
       run: |
         make sta
 
