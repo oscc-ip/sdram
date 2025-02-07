@@ -54,7 +54,6 @@ endinstance
 typedef union tagged {
     AXI4_Read_Rq#(AxiAddrWidth, AxiIdWidth, AxiUserWidth) READ_ADDR_REQ;
     AXI4_Write_Rq_Addr#(AxiAddrWidth, AxiIdWidth, AxiUserWidth) WRITE_ADDR_REQ;
-    void Invalid;
 } AddrReqType deriving (Bits, Eq, FShow);
 
 

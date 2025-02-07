@@ -26,7 +26,7 @@ module mkSdramController(SdramControllerIfc);
 
     Reg#(Bit#(32)) refreshCount <- mkRegU;
     Reg#(Bit#(32)) prechargeCount <- mkReg(0);
-    Reg#(Maybe#(Bit#(AxiAddrWidth))) currentAddr <- mkReg(Invalid);
+    Reg#(Maybe#(Bit#(AxiAddrWidth))) currentActiveAddr <- mkReg(Invalid);
 
     Reg#(Bit#(32)) i <- mkRegU;
 
@@ -93,7 +93,7 @@ module mkSdramController(SdramControllerIfc);
     rule prechargeAll if (!hasPrecharged && state[0] == Precharge);
         prechargeFsm.start;
         hasPrecharged <= True;
-        currentAddr <= Invalid;
+        currentActiveAddr <= Invalid;
     endrule
 
     rule prechargeAllDone if (hasPrecharged && state[0] == Precharge);
@@ -103,7 +103,7 @@ module mkSdramController(SdramControllerIfc);
         prechargeCount <= 0;
     endrule
 
-    rule prechargeCountIncrease if (isValid(currentAddr));
+    rule prechargeCountIncrease if (isValid(currentActiveAddr) && state[0] != Precharge);
         prechargeCount <= prechargeCount + 1;
     endrule
 
@@ -111,46 +111,38 @@ module mkSdramController(SdramControllerIfc);
         refreshCount <= refreshCount - 1;
     endrule
 
-    Reg#(AddrReqType) currentAddrReq <- mkRegU;
+    Reg#(Maybe#(AddrReqType)) currentReq <- mkReg(Invalid);
 
     rule idle if (state[1] == Idle);
-        AddrReqType addrReq = Invalid;
-        if(isValid(currentAddr) && (prechargeCount >= 20_000 - 5 || refreshCount < 24)) begin
+        let addrReq = currentReq;
+        if(isValid(currentActiveAddr) && (prechargeCount >= 20_000 - 5 || refreshCount < 24)) begin
             backState <= Idle;
             state[1] <= Precharge;
         end else if (refreshCount < 24) begin
             backState <= Idle;
             state[1] <= Refresh;
         end else begin
-            if (outerPhy.awValid && (isCurrentRead || (!isCurrentRead && !outerPhy.arValid))) begin
-                let d <- outerPhy.readAwReq;
-                addrReq = WRITE_ADDR_REQ(d);
-                isCurrentRead <= False;
-            end else if (outerPhy.arValid) begin
-                let d <- outerPhy.readArReq;
-                addrReq = READ_ADDR_REQ(d);
-                isCurrentRead <= True;
+            if(!isValid(currentReq)) begin
+                if (outerPhy.awValid && (isCurrentRead || (!isCurrentRead && !outerPhy.arValid))) begin
+                    let d <- outerPhy.readAwReq;
+                    addrReq = tagged Valid WRITE_ADDR_REQ(d);
+                    isCurrentRead <= False;
+                end else if (outerPhy.arValid) begin
+                    let d <- outerPhy.readArReq;
+                    addrReq = tagged Valid READ_ADDR_REQ(d);
+                    isCurrentRead <= True;
+                end
             end
-            let noNeedAct = (isValid(currentAddr) && case(addrReq) matches
-                tagged READ_ADDR_REQ .d:
-                    return d.addr[24:10] == fromMaybe(?, currentAddr)[24:10];
-                tagged WRITE_ADDR_REQ .d:
-                    return d.addr[24:10] == fromMaybe(?, currentAddr)[24:10];
-                tagged Invalid:
-                    return False;
-            endcase);
-            let isValidAddrReq = (case(addrReq) matches
-                tagged READ_ADDR_REQ .*:
-                    return True;
-                tagged WRITE_ADDR_REQ .*:
-                    return True;
-                tagged Invalid:
-                    return False;
-            endcase);
-            currentAddrReq <= addrReq;
-            if (isValidAddrReq) begin
+            if (isValid(addrReq)) begin
+                currentReq <= addrReq;
+                let noNeedAct = (isValid(currentActiveAddr) && case(fromMaybe(?, addrReq)) matches
+                    tagged READ_ADDR_REQ .d:
+                        return d.addr[24:10] == fromMaybe(?, currentActiveAddr)[24:10];
+                    tagged WRITE_ADDR_REQ .d:
+                        return d.addr[24:10] == fromMaybe(?, currentActiveAddr)[24:10];
+                endcase);
                 if (noNeedAct) begin
-                    state[1] <= Cmd;
+                    state[1] <= Act;
                 end else begin
                     state[1] <= Precharge;
                     backState <= Act;
@@ -159,24 +151,95 @@ module mkSdramController(SdramControllerIfc);
         end
     endrule
 
+    Reg#(Bit#(32)) delayCount <- mkRegU;
+
     /*
     Row: [24:12], Bank: [11:10], Col: [9:1], [0]
     */
-    rule act if (state[0] == Act);
-        sdramPhy.write(tagged Cmd_Activate {row: pack(currentAddrReq)[24:12], bank: pack(currentAddrReq)[11:10]});
+    rule act if (state[2] == Act);
+        if (isValid(currentActiveAddr)) begin
+            case (fromMaybe(?, currentReq)) matches
+                tagged READ_ADDR_REQ .d:
+                    state[2] <= Cmd;
+                tagged WRITE_ADDR_REQ .d:
+                    begin
+                        // if WFifo.valid
+                        state[2] <= Cmd;
+                    end
+            endcase
+        end else begin
+            let addr = case (fromMaybe(?, currentReq)) matches
+                tagged READ_ADDR_REQ .d:
+                    return d.addr;
+                tagged WRITE_ADDR_REQ .d:
+                    return d.addr;
+            endcase;
+            sdramPhy.write(tagged Cmd_Activate {row: addr[24:12], bank: addr[11:10]});
+            currentActiveAddr <= tagged Valid addr;
+            state[2] <= Delay;
+            delayCount <= 3;
+            backState <= Act;
+        end
+    endrule
+
+    rule delay if (state[0] == Delay);
+        /*
+        current & next cmd will use 2 cycles.
+        */
+        if (delayCount > 2) begin
+            delayCount <= delayCount - 1;
+        end else begin
+            state[0] <= backState;
+        end
     endrule
 
     rule cmd if (state[0] == Cmd);
-        case(currentAddrReq) matches
-            tagged READ_ADDR_REQ .d:
-                noAction;
-            tagged WRITE_ADDR_REQ .d:
-                noAction;
-        endcase
-        sdramPhy.write(Cmd_ReadAddr(0));
+        let col = fromMaybe(?, currentActiveAddr)[9:1];
+        if (isCurrentRead) begin
+            sdramPhy.write(Cmd_Read(col));
+        end else begin
+            sdramPhy.write(tagged Cmd_Write {col: tagged Valid col, dqm: 0, data: 0});
+        end
+        state[0] <= Finish;
     endrule
 
-    Maybe#(RStatus) rStatus = isCurrentRead && (state[0] == Cmd || state[0] == Wait) ? tagged Valid RStatus {id: 0, last: False} : Invalid;
+    rule finish if (state[1] == Finish);
+        let burst_length = case (fromMaybe(?, currentReq)) matches
+            tagged READ_ADDR_REQ .d:
+                return d.burst_length;
+            tagged WRITE_ADDR_REQ .d:
+                return d.burst_length;
+        endcase;
+        // todo: !wValid / narrow transfer
+        if (burst_length < 2) begin
+            state[1] <= Stop;
+        end else begin
+            state[1] <= Finish;
+            let newReq = case (fromMaybe(?, currentReq)) matches
+                tagged READ_ADDR_REQ .d:
+                    begin
+                        let t = d;
+                        t.burst_length = t.burst_length - 1;
+                        return tagged READ_ADDR_REQ t;
+                    end
+                tagged WRITE_ADDR_REQ .d:
+                    begin
+                        let t = d;
+                        t.burst_length = t.burst_length - 1;
+                        return tagged WRITE_ADDR_REQ t;
+                    end
+            endcase;
+            currentReq <= tagged Valid newReq;
+        end
+    endrule
+
+    rule stop if (state[0] == Stop);
+        state[0] <= Idle;
+        currentReq <= tagged Invalid;
+        sdramPhy.write(Cmd_Stop);
+    endrule
+
+    Maybe#(RStatus) rStatus = isCurrentRead && (state[0] == Cmd || state[0] == Finish) ? tagged Valid RStatus {id: 0, last: False} : Invalid;
     Vector#(3, Reg#(Maybe#(RStatus))) rStatusDelayVec <- replicateM(mkReg(defaultValue));
     rule casDelay;
         rStatusDelayVec[0] <= rStatus;

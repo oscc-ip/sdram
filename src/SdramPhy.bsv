@@ -46,16 +46,15 @@ module mkSdramPhy(SdramPhyIfc);
     method Action write(SdramPhyRequest req);
         case (req) matches
             tagged Cmd_Nop: cmdOut <= 'b0111;
-            tagged Cmd_ReadAddr {.col}: begin
+            tagged Cmd_Read {.col}: begin
                 cmdOut <= 'b0101;
                 addrOut <= extend(col);
             end
-            tagged Cmd_WriteAddr {.col}: begin
-                cmdOut <= 'b0100;
-                addrOut <= extend(col);
-                dqDirOut <= 1;
-            end
-            tagged Cmd_WriteData .d: begin
+            tagged Cmd_Write .d: begin
+                if (isValid(d.col)) begin
+                    cmdOut <= 'b0100;
+                    addrOut <= extend(fromMaybe(?, d.col));
+                end
                 dqmOut <= d.dqm;
                 dqoOut <= d.data;
                 dqDirOut <= 1;

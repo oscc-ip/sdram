@@ -11,17 +11,18 @@ typedef enum {
     Init,
     Act,
     Cmd,
-    Wait
+    Finish,
+    Stop
 } StateEnum deriving (Bits, Eq, FShow);
 
 typedef union tagged {
     void Cmd_Nop;
-    Bit#(9) Cmd_ReadAddr;
-    Bit#(9) Cmd_WriteAddr;
+    Bit#(9) Cmd_Read;
     struct {
+        Maybe#(Bit#(9)) col;
         Bit#(2) dqm;
         Bit#(16) data;
-    } Cmd_WriteData;
+    } Cmd_Write;
     void Cmd_Stop;
     Maybe#(Bit#(2)) Cmd_Precharge;
     // True for self-refresh, False for auto-refresh
