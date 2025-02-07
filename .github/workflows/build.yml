@@ -1,4 +1,4 @@
-name: Build project
+name: Build Project
 
 on:
   push:
@@ -93,6 +93,7 @@ jobs:
         CLK_FREQ_MHZ: 200
       run: |
         make sta
+        python3 script/gen_summary.py
 
     - name: Combine Files
       run: |
