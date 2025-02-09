@@ -193,6 +193,8 @@ module mkSdramController(SdramControllerIfc);
         end
     endrule
 
+    Reg#(UInt#(16)) needCount <- mkRegU;
+
     rule cmd if (state[0] == Cmd);
         let col = fromMaybe(?, currentActiveAddr)[9:1];
         if (isCurrentRead) begin
@@ -200,36 +202,49 @@ module mkSdramController(SdramControllerIfc);
         end else begin
             sdramPhy.write(tagged Cmd_Write {col: tagged Valid col, dqm: 0, data: 0});
         end
-        state[0] <= Finish;
-    endrule
-
-    rule finish if (state[1] == Finish);
         let burst_length = case (fromMaybe(?, currentReq)) matches
             tagged READ_ADDR_REQ .d:
                 return d.burst_length;
             tagged WRITE_ADDR_REQ .d:
                 return d.burst_length;
         endcase;
-        // todo: !wValid / narrow transfer
-        if (burst_length < 2) begin
+        let burst_size = case (fromMaybe(?, currentReq)) matches
+            tagged READ_ADDR_REQ .d:
+                return d.burst_size;
+            tagged WRITE_ADDR_REQ .d:
+                return d.burst_size;
+        endcase;
+        let addr = case (fromMaybe(?, currentReq)) matches
+            tagged READ_ADDR_REQ .d:
+                return d.addr;
+            tagged WRITE_ADDR_REQ .d:
+                return d.addr;
+        endcase;
+
+        let crossBoundary = addr[0] == 1;
+        needCount <= (isCurrentRead ? (case (burst_size) matches
+            B1: begin
+                if (burst_length == 0)
+                    return 1;
+                else
+                    return ((extend(burst_length) + 2) >> 1 + (crossBoundary ? 1 : 0));
+            end
+            B2: begin
+                return ((extend(burst_length) + 1) + (crossBoundary ? 1 : 0));
+            end
+            B4: begin
+                return ((extend(burst_length) + 1) << 1) + (crossBoundary ? 1 : 0);
+            end
+        endcase) : (extend(burst_length) << 1)) - 1;
+        state[0] <= Finish;
+    endrule
+
+    rule finish if (state[1] == Finish);
+        // todo: !wValid / rFull / crossBank
+        if (needCount == 0) begin
             state[1] <= Stop;
         end else begin
-            state[1] <= Finish;
-            let newReq = case (fromMaybe(?, currentReq)) matches
-                tagged READ_ADDR_REQ .d:
-                    begin
-                        let t = d;
-                        t.burst_length = t.burst_length - 1;
-                        return tagged READ_ADDR_REQ t;
-                    end
-                tagged WRITE_ADDR_REQ .d:
-                    begin
-                        let t = d;
-                        t.burst_length = t.burst_length - 1;
-                        return tagged WRITE_ADDR_REQ t;
-                    end
-            endcase;
-            currentReq <= tagged Valid newReq;
+            needCount <= needCount - 1;
         end
     endrule
 
