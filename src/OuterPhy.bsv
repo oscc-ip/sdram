@@ -22,12 +22,16 @@ interface OuterIfc;
     method Bool arValid;
     method Bool awValid;
     method Bool wValid;
+    method Bool rRespNotFull;
     interface AxiIfc axi;
 endinterface
 
 typedef struct {
     Bit#(AxiIdWidth) id;
+    Bit#(1) offset;
+    Bool replicate;
     Bool last;
+    AXI4_BurstSize burst_size;
 } RStatus deriving (Bits, Eq, FShow);
 
 typedef struct {
@@ -51,9 +55,12 @@ instance DefaultValue#(RSplit);
     };
 endinstance
 
-typedef union tagged {
-    AXI4_Read_Rq#(AxiAddrWidth, AxiIdWidth, AxiUserWidth) READ_ADDR_REQ;
-    AXI4_Write_Rq_Addr#(AxiAddrWidth, AxiIdWidth, AxiUserWidth) WRITE_ADDR_REQ;
+typedef struct {
+    Bit#(AxiAddrWidth) addr;
+    Bit#(AxiIdWidth) id;
+    AXI4_BurstType burst_type;
+    AXI4_BurstSize burst_size;
+    UInt#(8) burst_length;
 } AddrReqType deriving (Bits, Eq, FShow);
 
 
@@ -69,6 +76,7 @@ module mkOuterPhy(OuterIfc);
     FIFOF#(AXI4_Read_Rq#(AxiAddrWidth, AxiIdWidth, AxiUserWidth)) arReqFifo <- mkFIFOF;
     FIFOF#(AXI4_Write_Rq_Addr#(AxiAddrWidth, AxiIdWidth, AxiUserWidth)) awReqFifo <- mkFIFOF;
     FIFOF#(AXI4_Write_Rq_Data#(AxiDataWidth, AxiUserWidth)) wReqFifo <- mkFIFOF;
+    FIFOF#(AXI4_Read_Rs#(AxiDataWidth, AxiIdWidth, AxiUserWidth)) rRespFifo <- mkSizedFIFOF(8);
 
     rule arReqFifoEnq;
         let d <- s_rd.request.get;
@@ -118,6 +126,10 @@ module mkOuterPhy(OuterIfc);
 
     method Bool wValid;
         return wReqFifo.notEmpty;
+    endmethod
+
+    method Bool rRespNotFull;
+        return rRespFifo.notFull;
     endmethod
 
     interface AxiIfc axi;

@@ -10,7 +10,10 @@ typedef enum {
     Precharge,
     Init,
     Act,
-    Cmd,
+    Calc,
+    StartRead,
+    WaitRead,
+    StartWrite,
     Finish,
     Stop
 } StateEnum deriving (Bits, Eq, FShow);
@@ -19,7 +22,7 @@ typedef union tagged {
     void Cmd_Nop;
     Bit#(9) Cmd_Read;
     struct {
-        Maybe#(Bit#(9)) col;
+        Bit#(9) col;
         Bit#(2) dqm;
         Bit#(16) data;
     } Cmd_Write;
