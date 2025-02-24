@@ -1,0 +1,11 @@
+version: 2
+
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3"
+    nodejs: "20"
+  commands:
+  # Commands from https://docs.antora.org/antora/latest/install-and-run-quickstart/
+  - npm install antora asciidoctor-kroki @antora/lunr-extension
+  - npx -y antora --fetch --to-dir $READTHEDOCS_OUTPUT/html base.yml
