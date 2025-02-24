@@ -1,3 +1,7 @@
 = Docs
 
+image::https://readthedocs.org/projects/oscc-ip-sdram/badge/?version=latest[link=https://oscc-ip-sdram.readthedocs.io/]
+
+image::https://badges.crowdin.net/oscc-ip-sdram/localized.svg[link=https://crowdin.com/project/oscc-ip-sdram]
+
 This branch contains the documentation for the project.

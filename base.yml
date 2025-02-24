@@ -3,10 +3,10 @@ site:
   start_page: main::index.adoc
 content:
   sources:
-  - url: .
+  - url: https://github.com/oscc-ip/sdram.git
     start_paths:
     - REPLACE_ME
-    branches: HEAD
+    branches: ng-docs
 antora:
   extensions:
   - require: '@antora/lunr-extension'
