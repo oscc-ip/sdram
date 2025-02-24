@@ -1,0 +1,3 @@
+files:
+  - source: /docs/**/*.adoc
+    translation: '%original_path%/%original_file_name%'
