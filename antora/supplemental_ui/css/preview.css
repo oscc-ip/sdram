@@ -1,0 +1,15 @@
+/* this is the CSS to be used when rendering a preview in the IDE */
+@import "site.css";
+@import "custom.css";
+@import "font-awesome.min.css";
+
+/* workaround for browsers that don't allow relative URLs when the page is opened as a file:// */
+@font-face {
+    font-family: 'FontAwesome';
+    src: url('https://intellij-asciidoc-plugin.ahus1.de/docs/antora/fonts/fontawesome-webfont.eot?v=4.7.0');
+    src: url('https://intellij-asciidoc-plugin.ahus1.de/docs/antora/fonts/fontawesome-webfont.eot?#iefix&v=4.7.0') format('embedded-opentype'), url('https://intellij-asciidoc-plugin.ahus1.de/docs/antora/fonts/fontawesome-webfont.woff2?v=4.7.0') format('woff2'), url('https://intellij-asciidoc-plugin.ahus1.de/docs/antora/fonts/fontawesome-webfont.woff?v=4.7.0') format('woff'), url('https://intellij-asciidoc-plugin.ahus1.de/docs/antora/fonts/fontawesome-webfont.ttf?v=4.7.0') format('truetype'), url('https://intellij-asciidoc-plugin.ahus1.de/docs/antora/fonts/fontawesome-webfont.svg?v=4.7.0#fontawesomeregular') format('svg');
+}
+
+body {
+    padding-top: 0
+}
