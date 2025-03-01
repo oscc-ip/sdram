@@ -28,4 +28,4 @@ From a protocol compliance perspective, claiming adherence to the AXI4 standard 
 
 We have been working hard to ensure that our design is capable of being `plug-and-play`, covering all possible scenarios. Therefore, this design fully implements the AXI4 protocol specification to ensure comprehensive support for all transfer modes.
 
-image:en@sdram:ROOT:shut-up-and-take-my-money.jpg[]
+image::ROOT:shut-up-and-take-my-money.jpg[]
