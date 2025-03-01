@@ -1,0 +1,31 @@
+= Why we support unaligned/narrow transfer
+
+:toc:
+:icons: font
+:author: kazutoiris
+
+== Overview
+
+As a mainstream on-chip bus protocol, AXI4 defines two special transfer mechanisms in addition to standard aligned transfers: Unaligned Transfer and Narrow Transfer.
+
+* Unaligned transfer refers to scenarios where the address is not aligned with the bus width.
+* Narrow transfer specifically refers to scenarios where the data width is less than the bus width.
+
+== Motivation
+
+In practical engineering implementations, commercial IP solutions leverage AXI bus crossbar matrices to automatically handle address alignment and width conversion. However, when adopting open-source IP solutions, significant functional limitations emerge:
+
+* Inability to guarantee comprehensive handling of all corner cases.
+* Potential absence of critical crossbar module support.
+
+== Rationale
+
+As disclosed in https://www.intel.com/content/www/us/en/docs/programmable/823097/24-3/aligned-and-unaligned-transfer-support.html[Intel's technical documentation], the configurable support for unaligned transfers in commercial IPs inherently reflects a trade-off between resource utilization and functional completeness.
+
+For the current design, the additional hardware resource overhead introduced to support unaligned/narrow transfer mechanisms remains within acceptable margins. Notably, the maximum operating frequency of the SDRAM controller is constrained by the physical limitations of the SDRAM device itself (≤ 200 MHz). This ensures that even with added logic for corner case handling, no timing closure issues or performance degradation will occur.
+
+From a protocol compliance perspective, claiming adherence to the AXI4 standard while selectively omitting protocol-defined special transfer mechanisms raises concerns about standard conformance. Such selective support effectively equates to defining a new bus subset (e.g., an _AXI4 without unligned/narrow transfer_ variant), which violates engineering best practices and diminishes IP interoperability.
+
+We have been working hard to ensure that our design is capable of being _plug-and-play_, covering all possible scenarios. Therefore, this design fully implements the AXI4 protocol specification to ensure comprehensive support for all transfer modes.
+
+image::ROOT:shut-up-and-take-my-money.jpg[]
