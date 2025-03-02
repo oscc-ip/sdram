@@ -9,3 +9,7 @@ pull_request_title: 'docs(translation): new translation from Crowdin'
 pull_request_labels:
 - crowdin
 - l10n
+pull_request_assignees:
+- kazutoiris
+pull_request_reviewers:
+- kazutoiris
