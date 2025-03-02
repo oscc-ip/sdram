@@ -1,0 +1,18 @@
+= Why we use Antora
+:toc:
+:icons: font
+:author: kazutoiris
+
+Multiple documentation generation frameworks exist in the ecosystem. For example, https://docs.readthedocs.com/platform/stable/intro/doctools.html[Read the Docs] supports _MkDocs_, _Sphinx_, _Docusaurus_, _Markdoc_, _mdBook_, _VitePress_, and _Antora_. Our evaluation criteria prioritize 3 core requirements:
+
+. Content-focused authoring
++
+We require plain text composition with minimal abstraction layers. Solutions like _VitePress_ and _Docusaurus_ were excluded due to their web development-oriented architecture and inherent complexity in content abstraction.
+. Flexible documentation structure
++
+While _Sphinx_, _MkDocs_, and _mdBook_ provide robust documentation frameworks, their hierarchical chapter/section enforcement proves overly restrictive for specification documentation requiring non-linear content organization.
+. Expressive semantic markup
++
+Although _Markdoc_ offers customization capabilities, we selected _AsciiDoc_ as our primary format due to its native support for advanced documentation features.
+
+This combination of semantic richness and structural flexibility makes Antora particularly suited for our needs.
