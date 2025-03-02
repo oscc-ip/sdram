@@ -9,4 +9,5 @@ build:
   # Commands from https://docs.antora.org/antora/latest/install-and-run-quickstart/
   - npm install antora asciidoctor-kroki @antora/lunr-extension
   - sed -i 's/REPLACE_ME/$LANG/g' base.yml
+  - cp antora.yml $LANG
   - npx -y antora --fetch --to-dir $READTHEDOCS_OUTPUT/html base.yml

@@ -1,9 +1,0 @@
-= Kroki Template
-
-:toc:
-:icons: font
-:author: kazutoiris
-
-== Example
-
-icon:file[] Nothing Here

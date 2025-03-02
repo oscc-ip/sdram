@@ -1,4 +1,0 @@
-* xref:index.adoc[README]
-* xref::[Why we ... ?]
-** xref:why/use-antora.adoc[use Antora]
-** xref:why/support-unaligned-narrow-transfer.adoc[support unaligned/narrow transfer]

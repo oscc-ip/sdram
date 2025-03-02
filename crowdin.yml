@@ -1,5 +1,9 @@
 files:
-- source: /en/**/*.adoc
+- source: /en/**/*
   translation: '**/%original_file_name%'
 commit_message: 'docs(translation): new translation for %original_file_name% in %language%'
 append_commit_message: false
+pull_request_title: 'docs(translation): new translation from Crowdin'
+pull_request_labels:
+- crowdin
+- l10n
