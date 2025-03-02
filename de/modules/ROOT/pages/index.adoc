@@ -1,0 +1,15 @@
+= Main Page
+
+:author: kazutoiris
+:maintainer: kazutoiris
+:icons: font
+:toc:
+
+== Maintenance
+
+Author::
+* https://github.com/{author}[GitHub@{author}]
+Maintainer::
+* https://github.com/kazutoiris[GitHub@kazutoiris]
+
+== Contributors
