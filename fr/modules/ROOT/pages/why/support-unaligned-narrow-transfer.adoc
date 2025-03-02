@@ -1,4 +1,4 @@
-= Why we support unaligned/narrow transfer
+= Why do we support unaligned/narrow transfer
 
 :toc:
 :icons: font
@@ -6,10 +6,10 @@
 
 == Overview
 
-As a mainstream on-chip bus protocol, AXI4 defines two special transfer mechanisms in addition to standard aligned transfers: Unaligned Transfer and Narrow Transfer.
+As a mainstream on-chip bus protocol, AXI4 defines two special transfer mechanisms in addition to standard aligned transfers: _Unaligned transfer_ and _Narrow transfer_.
 
-* Unaligned transfer refers to scenarios where the address is not aligned with the bus width.
-* Narrow transfer specifically refers to scenarios where the data width is less than the bus width.
+* _Unaligned transfer_ refers to scenarios where the address is not aligned with the bus width.
+* _Narrow transfer_ specifically refers to scenarios where the data width is less than the bus width.
 
 == Motivation
 
