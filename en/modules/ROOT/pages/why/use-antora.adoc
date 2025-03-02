@@ -1,4 +1,4 @@
-= Why we use Antora
+= Why do we use Antora
 :toc:
 :icons: font
 :author: kazutoiris
