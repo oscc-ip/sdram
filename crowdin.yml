@@ -1,5 +1,7 @@
 files:
 - source: /en/**/*
+  ignore:
+  - /en/antora.yml
   translation: '**/%original_file_name%'
 commit_message: 'docs(translation): new translation for %original_file_name% in %language%'
 append_commit_message: false

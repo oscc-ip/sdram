@@ -1,0 +1,11 @@
+title: Main
+name: main
+version: ~
+nav:
+  - modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    page-pagination: ''
+    experimental: ''
+    idprefix: ''
+    idseparator: '-'
