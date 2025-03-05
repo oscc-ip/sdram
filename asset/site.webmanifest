@@ -1,0 +1,17 @@
+{
+    "name": "OSCC-IP SDRAM Controller",
+    "short_name": "SDRAM",
+    "start_url": "/",
+    "display": "standalone",
+    "description": "OSCC-IP SDRAM Controller",
+    "orientation": "portrait-primary",
+    "theme_color": "#cc0000",
+    "background_color": "#6f777d",
+    "icons": [
+        {
+            "src": "/logo.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
