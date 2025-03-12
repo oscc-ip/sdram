@@ -1,5 +1,5 @@
 site:
-  title: OSCC-IP SDRAM Controller
+  title: SDRAM Controller
   start_page: main::index.adoc
 content:
   sources:
