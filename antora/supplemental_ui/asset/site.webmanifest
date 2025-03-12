@@ -1,4 +1,5 @@
 {
+    "id": "/",
     "name": "OSCC-IP SDRAM Controller",
     "short_name": "SDRAM",
     "start_url": "/",
@@ -9,9 +10,23 @@
     "background_color": "#6f777d",
     "icons": [
         {
-            "src": "/logo.svg",
+            "src": "logo.svg",
             "sizes": "any",
             "type": "image/svg+xml"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "logo.svg",
+            "sizes": "444x444",
+            "type": "image/svg+xml",
+            "form_factor": "wide"
+        },
+        {
+            "src": "logo.svg",
+            "sizes": "444x444",
+            "type": "image/svg+xml",
+            "form_factor": "narrow"
         }
     ]
 }
