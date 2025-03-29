@@ -7,7 +7,7 @@
 == Background
 The AXI protocol supports **narrow transfer** (8/16/32-bit) with optional data bus widthfootnote:[AXI use `AxSIZE[2:0\]` to indicate the number of bytes transferred per transfer.], while SDRAM operates with fixed 16-bit physical interfaces. This mismatch creates two key challenges:
 
-* **Alignment Overhead**: SDRAM requires 16-bit aligned address, whereas the AXI protocol allows non-aligned transfers. This misalignment necessitates manual data reordering and buffering to ensure the correct order before transferring data to SDRAM or back to the master.
+* **Alignment Overhead**: SDRAM requires 16-bit aligned address, whereas the AXI protocol allows _unaligned transfers_. This misalignment necessitates manual data reordering and buffering to ensure the correct order before transferring data to SDRAM or back to the master.
 
 * **Transfer Suspension**: AXI transfers can be suspended when the `ready` or `valid` signals are deasserted. However, SDRAM does not support the ability to suspend burst operations. Once a burst transaction is initiated, it processes the entire burst without any delay. Therefore, this behavior needs to be carefully considered.
 
