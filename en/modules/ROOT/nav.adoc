@@ -2,3 +2,5 @@
 * xref::[Why do we ... ?]
 ** xref:why/use-antora.adoc[use Antora]
 ** xref:why/support-unaligned-narrow-transfer.adoc[support unaligned/narrow transfer]
+* xref::[How do we ... ?]
+** xref:how/implement-data-caching-and-sharding.adoc[implement data caching and sharding]
