@@ -31,7 +31,7 @@ Since we can suspend the AXI read response by deasserting the `valid` signal, **
 
 [CAUTION]
 ====
-Caching the SDRAM read responses means caching *all* responses, even during the CAS latencyfootnote:[For convenience, we assume the CAS latency is 3 cycles].
+Caching the SDRAM read responses means caching *all* responses, even during the CAS latency.
 
 Therefore, we should stop the SDRAM burst read transaction when the AXI master `ready` signal is deasserted and reserve sufficient buffer for the CAS latency.
 ====
@@ -83,7 +83,7 @@ We use two FIFOs to implement the read cache. RFIFO1 is a 1-depth 32-bit Bypass 
 
 image::ROOT:fifo-read.svg[RFIFO]
 
-Every time two 16-bit data are available in FIFO2, the data will be cached into RFIFO1. When RFIFO1 is full, the state machine will automatically switch to the `STOP` state, forcing the SDRAM to stop the burst operation. Due to the CAS latency of SDRAM, it will still send 3 cycles of read data. At this time, RFIFO2 will cache all the read data. When RFIFO1 is empty, the burst operation will be restarted.
+Every time two 16-bit data are available in FIFO2, the data will be cached into RFIFO1. When RFIFO1 is full, the state machine will automatically switch to the `STOP` state, forcing the SDRAM to stop the burst operation. Due to the CAS latency of SDRAM -- for simplicity, we assume a CAS latency of 3 cycles -- it will still send 3 cycles of read data. At this time, RFIFO2 will cache all the read data. When RFIFO1 is empty, the burst operation will be restarted.
 
 === Write Operation
 
