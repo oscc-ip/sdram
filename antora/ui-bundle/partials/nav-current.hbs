@@ -1,0 +1,6 @@
+{{#if navigation.length ~}}
+{{#each navigation ~}}
+{{#if (eq ./url @root.page.url)}} is-current-path is-active{{/if ~}}
+{{> nav-current navigation=./items level=(increment ../level) ~}}
+{{/each ~}}
+{{/if ~}}

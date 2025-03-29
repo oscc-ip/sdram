@@ -12,7 +12,7 @@ antora:
   - require: '@antora/lunr-extension'
 ui:
   bundle:
-    url: antora/ui-bundle.zip
+    url: antora/ui-bundle
     snapshot: true
   supplemental_files: antora/supplemental_ui
 asciidoc:
