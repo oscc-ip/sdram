@@ -1,0 +1,36 @@
+= Why we chose the Cocotb framework for verification
+
+:toc:
+:icons: font
+:author: kazutoiris
+
+== Background
+
+Initially, we used Verilator for verification; however, it did not support some of the Verilog features required by our specification model, which prompted us to switch to Synopsys VCS. Since we are an open-source project, Synopsys VCS was only a temporary solution. Our ultimate goal is to implement a fully open-source verification framework, along with an open-source verification model.
+
+Directly using DPI-C for verification would tightly couple the test code to the verification tools, making future migration and adaptability more difficult. To address this, we adopted the approach same as link:https://github.com/chipsalliance/t1/tree/master/difftest[t1/difftest at master · chipsalliance/t1]. This approach allows us to write Rust code that can interface with both Verilator and Synopsys VCS.
+
+However, managing the versions of Rust, Cargo, and their dependencies presented significant challenges. We attempted to use Nix for package management, but it proved to be inconvenient. For instance, whenever we modified Cargo.toml, we had to manually update the checksum and refresh dependencies -- even during development when version consistency wasn`'t critical. Additionally, working offline (which is common in EDA development) introduced further difficulties. Without Intranet caching solution or package management for Nix, such as Sonatype Nexus for Maven, syncing dependencies between Intranet and Internet became cumbersome.
+
+Compare with Verilog and Bluespec, Bluespec offers a more modern approach, where higher-level features won`'t affect the lower-level Verilog compatibility. This decoupling ensures that Verilog artifacts are compatible with all Verilog tools, irrespective of how the higher layers are abstracted or reused. This is in contrast to directly using SystemVerilog for new features, which could lead to compatibility issues. By adopting Bluespec, we achieve better compatibility without sacrificing abstraction capabilities.
+
+Our goal is to decouple test code from verification tools, as frequent switching between different verification tools is often necessary to adapt to models from various vendors. For example, encrypted Verilog models from vendors are typically adapted to work with Synopsys VCS, Siemens Questa, or Cadence Xcelium. Although these models provide consistent interfaces, differences in encryption methods, Verilog versions, and implementation quirks often lead to tight coupling between the models and verification tools. We plan to reimplement a set of open-source models in the future to enhance compatibility with all verification tools, but for now, our focus is on decoupling the verification process. This would allow the reuse of the test code across different tools, minimizing friction when switching between them.
+
+== Advantages of Cocotb
+
+Cocotb is a Python-based verification framework designed for SystemVerilog and Verilog HDL. It provides a high-level API that simplifies interactions with the simulation environment, enabling users to write tests in a more intuitive and concise manner. It can be integrated with various simulation tools such as Synopsys VCS, Verilator, and others.
+
+. High-Level API
++
+Cocotb provides an easy-to-use API that facilitates interaction with the simulation environment. This simplifies the writing of tests in a clear and straightforward way. We can use pure Python libraries for verification. For example, link:https://github.com/secdev/scapy[Scapy], a Python-based interactive packet manipulation library (though it`'s not originally designed for EDA verification), can be employed for Ethernet verification without any modifications.
+. Ease of Use
++
+Cocotb is easy to install and use, there`'s no need to manually add additional dependencies.
+. Lightweight
++
+There are many package managers, such as poetry, pipenv, conda, and others, that can manage Python versions and dependencies. These tools are much lighter than alternatives like Nix.
+. Community Support
++
+Cocotb has a large and active community of developers. There are already several successful examples of using Cocotb for large-scale projects, such as the PCI-E verification framework link:https://github.com/alexforencich/cocotbext-pcie[alexforencich/cocotbext-pcie].
+
+Cocotb is an excellent choice for verification complex systems due to its flexible framework, extensibility, and strong community support. While commercial simulators like Synopsys VCS or Cadence Xcelium offer a broader range of features and capabilities, Cocotb remains a strong candidate for open-source projects, offering a solid, flexible, and community-backed solution.

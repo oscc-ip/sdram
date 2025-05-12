@@ -1,0 +1,94 @@
+= How do we implement data caching and sharding
+
+:toc:
+:icons: font
+:author: kazutoiris
+
+== Background
+
+The AXI protocol supports **narrow transfer** (8/16/32-bit) with optional data bus widthfootnote:[AXI use `AxSIZE[2:0\]` to indicate the number of bytes transferred per transfer.], while SDRAM operates with fixed 16-bit physical interfaces. This mismatch creates two key challenges:
+
+* **Alignment Overhead**: SDRAM requires 16-bit aligned address, whereas the AXI protocol allows _unaligned transfers_. This misalignment necessitates manual data reordering and buffering to ensure the correct order before transferring data to SDRAM or back to the master.
+* **Transfer Suspension**: AXI transfers can be suspended when the `ready` or `valid` signals are deasserted. However, SDRAM does not support the ability to suspend burst operations. Once a burst transaction is initiated, it processes the entire burst without any delay. Therefore, this behavior needs to be carefully considered.
+
+== Analysis
+
+=== Read Operation
+
+In this section, we assume that the AXI data bus width is 32-bit, which means we only need to consider 8-bit, 16-bit, and 32-bit read operations.
+
+. 8-bit
++
+For 8-bit reads, in the best case, a single SDRAM read can satisfy 2 AXI transfersfootnote:aligned[If the address is aligned to 16 bits, assuming the address pattern is like `?0`.]. However, in the worst case, a single SDRAM read can only satisfy 1 AXI transfer.
+. 16-bit
++
+For 16-bit reads, in the best case, a single SDRAM read can satisfy 1 AXI transferfootnote:aligned[]. However, in the worst case, 2 SDRAM reads are required to satisfy 1 AXI transfer.
+. 32-bit
++
+For 32-bit reads, in the best case, a single SDRAM read can satisfy 1 AXI transferfootnote:[Assuming the address pattern is like `1?`.]. However, in the worst case, 2 SDRAM reads are required to satisfy 1 AXI transfer.
+
+Since we can suspend the AXI read response by deasserting the `valid` signal, **as long as** we can cache the SDRAM read responses, implementing a read cache becomes straightforward.
+
+[CAUTION]
+====
+Caching the SDRAM read responses means caching *all* responses, even during the CAS latency.
+
+Therefore, we should stop the SDRAM burst read transaction when the AXI master `ready` signal is deasserted and reserve sufficient buffer for the CAS latency.
+====
+
+=== Write Operation
+
+Unlike read operations, write operations do not require consideration of CAS latency. As a result, it is possible to transfer both the address and data at the same time.
+
+Similar to read operations, this section only considers 8-bit, 16-bit, and 32-bit read operations.
+
+Due to the limitation of SDRAM`'s CKE feature, which cannot remain deasserted indefinitely, when the master suspends a transfer, we must restart the transaction. Restarting burst transfers requires re-sending the `BURST WRITE` command with data and address, making it similar to the single write operation. Therefore, the single write operation is used in this section instead.
+
+. 8-bit
++
+For 8-bit writes, typically 2 transfers are required to complete a write operation. In the best casefootnote:unaligned[If the address is unaligned to 16 bits, assuming the address pattern is like `?1`.], 1 transfer is sufficient.
+. 16-bit
++
+For 16-bit writes, 1 transfer can always accommodate a single write.
++
+[TIP]
+====
+Let`'s consider two scenarios.
+
+Aligned Address:: The address is like `?0`. In this scenario, the data is 16-bit, and the address is aligned, allowing for a straightforward write operation.
+Unaligned Address:: The address is like `?1`. In this scenario, the data is 8-bit, so a single write is sufficient. The next address must be aligned.
+
+Therefore, regardless of whether the address is aligned or not, only a single write is needed.
+====
+. 32-bit
++
+For 32-bit write, under normal circumstances, it is sufficient to accommodate 2 writes. In special casesfootnote:unaligned[], it can only support a single write.
+
+[NOTE]
+====
+Since a `READ` operation is equivalent to a `STOP BURST` followed by a `READ`, and a `WRITE` can be considered equivalent to a `STOP BURST` followed by a `WRITE`. We can directly send a `WRITE` to start a new burst operation without the need to send a `STOP BURST` first.
+
+However, if the master`'s `valid` signal is deasserted and we do not have enough write buffer data, we need to manually send a `STOP BURST`. In the worst-case scenario, this may result in an additional idle cycle.
+
+Therefore, we still use a single write operation.
+====
+
+== Implementation
+
+Due to the CAS latency of SDRAM, we choose to separate the command and data channel. Therefore, the command channel is controlled by the state machine. The RFIFO will only connect to `DQi`, and the WFIFO will only connect to `DQo`.
+
+=== Read Operation
+
+We use two FIFOs to implement the read cache. RFIFO1 is a 1-depth 32-bit Bypass FIFO that is directly connected to the `R` response channel of AXI. RFIFO2 is a 4-depth 16-bit Bypass FIFO that is directly connected to the `DQi` port of SDRAM.
+
+image::ROOT:fifo-read.svg[RFIFO]
+
+Every time two 16-bit data are available in FIFO2, the data will be cached into RFIFO1. When RFIFO1 is full, the state machine will automatically switch to the `STOP` state, forcing the SDRAM to stop the burst operation. Due to the CAS latency of SDRAM -- for simplicity, we assume a CAS latency of 3 cycles -- it will still send 3 cycles of read data. At this time, RFIFO2 will cache all the read data. When RFIFO1 is empty, the burst operation will be restarted.
+
+=== Write Operation
+
+Since the AXI protocol supports back-pressure, we can use a single FIFO to implement the write cache. The WFIFO is a 4-depth 32-bit Bypass FIFO that is directly connected to the `DQo` port of SDRAM. But we need to manually control the back-pressure in the `B` channel. Therefore, we connect two FIFOs to the `B` channel (to simulate the `almost_empty` signal).
+
+image::ROOT:fifo-write.svg[WFIFO]
+
+When WFIFO is empty or BFIFO1 is full, the state machine will automatically switch to the `STOP` state, forcing the SDRAM to stop the burst operation. When WFIFO is full, the AXI write request will be suspended through back-pressure.
